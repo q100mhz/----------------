@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ДОПОГ Экспресс Онлайн — Реестр и Согласование</title>
+  <title>ДОПОГ Экспресс Онлайн — Маршруты, СР и Автопарк</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,38 +13,41 @@
     <div class="brand-wrapper">
       <div class="brand-icon">⚠</div>
       <div class="brand-text">
-        <h1>ДОПОГ Экспресс <span class="brand-badge" style="background:#10b981;color:#fff;">SaaS Online</span></h1>
-        <div class="brand-sub">Реестр СР, автопарка и контроль опасных грузов (упаковки / бочки)</div>
+        <h1>ДОПОГ Экспресс <span class="brand-badge" style="background:#10b981;color:#fff;">SaaS v2.0</span></h1>
+        <div class="brand-sub">Реестр маршрутов, специальных разрешений и допусков ДОПОГ</div>
       </div>
     </div>
 
-    <!-- Профиль консультанта и действия -->
+    <!-- Профиль консультанта и компании -->
     <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" id="btnEnablePush" onclick="requestPushPermission()" title="Включить браузерные Push-уведомления">
-        🔔 Уведомления
+      <button class="btn btn-secondary btn-sm" id="btnEnablePush" onclick="requestPushPermission()" title="Включить звуковые и Push-оповещения">
+        🔔 Оповещения
       </button>
 
-      <div class="user-profile-badge" onclick="openConsultantModal()" title="Нажмите для просмотра/редактирования свидетельства консультанта">
+      <div class="user-profile-badge" onclick="openProfileModal()" title="Нажмите для просмотра карточки организации и консультанта">
         <span class="user-avatar" id="userAvatar">К</span>
         <div>
           <div style="font-weight: 700; line-height: 1.2;" id="userFullName">Консультант ДОПОГ</div>
-          <div style="font-size: 0.72rem; color: #94a3b8;" id="consultantCertBadge">Свидетельство: загрузка...</div>
+          <div style="font-size: 0.72rem; color: #94a3b8;" id="consultantCertBadge">Загрузка свидетельства...</div>
         </div>
         <span class="company-tag" id="userCompanyName">Организация</span>
       </div>
 
-      <button class="btn-logout" onclick="logoutUser()" title="Выйти из системы">
-        Выйти 🚪
-      </button>
+      <button class="btn-logout" onclick="logoutUser()" title="Выйти из системы">Выйти 🚪</button>
     </div>
   </header>
 
-  <!-- Навигация -->
+  <!-- Навигация по вкладкам -->
   <nav class="nav-bar">
     <div class="nav-tabs">
-      <button class="nav-tab active" data-tab="tab-permits" onclick="switchTab('tab-permits')">
+      <button class="nav-tab active" data-tab="tab-routes" onclick="switchTab('tab-routes')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"></circle><path d="M9 19h8.5a4.5 4.5 0 0 0 0-9H5a3 3 0 0 1 0-6h13"></path><circle cx="18" cy="4" r="3"></circle></svg>
+        Реестр Маршрутов
+        <span class="tab-badge" id="routesCountBadge">0</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-permits" onclick="switchTab('tab-permits')">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-        Реестр Спецразрешений
+        Специальные Разрешения (СР)
         <span class="tab-badge" id="permitsCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-vehicles" onclick="switchTab('tab-vehicles')">
@@ -53,91 +56,141 @@
         <span class="tab-badge" id="vehiclesCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-calc" onclick="switchTab('tab-calc')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         Проверка груза по ООН (ОГПО)
-      </button>
-      <button class="nav-tab" data-tab="tab-docs" onclick="switchTab('tab-docs')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-        Пакет документов
-        <span class="brand-badge" style="background:#3b82f6;color:#fff;">Итерация 2</span>
       </button>
     </div>
   </nav>
 
-  <!-- Основной контейнер -->
+  <!-- Контент -->
   <main class="app-container">
 
-    <!-- ВКЛАДКА 1: РЕЕСТР СПЕЦРАЗРЕШЕНИЙ -->
-    <section id="tab-permits" class="tab-content active">
-      <!-- Дашборд: кликабельные карточки с быстрой фильтрацией -->
+    <!-- ВКЛАДКА 1: РЕЕСТР МАРШРУТОВ (ГЛАВНАЯ СУЩНОСТЬ) -->
+    <section id="tab-routes" class="tab-content active">
       <div class="stats-grid">
-        <div class="stat-card total clickable active-filter" data-permit-filter="all" onclick="setPermitFilter('all')" title="Показать все СР">
-          <div class="stat-title">Всего СР в реестре</div>
-          <div class="stat-value" id="statPermitsTotal">0</div>
-          <div class="stat-desc">По автопарку компании</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
+        <div class="stat-card total clickable active-filter" data-route-filter="all" onclick="setRouteFilter('all')">
+          <div class="stat-title">Всего маршрутов</div>
+          <div class="stat-value" id="statRoutesTotal">0</div>
+          <div class="stat-desc">В согласовании и работе</div>
         </div>
-        <div class="stat-card green clickable" data-permit-filter="active" onclick="setPermitFilter('active')" title="Фильтр: срок более 30 дней">
-          <div class="stat-title">Действуют в норме</div>
-          <div class="stat-value" id="statPermitsActive" style="color: var(--status-green);">0</div>
-          <div class="stat-desc">Срок > 30 дней</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
+        <div class="stat-card green clickable" data-route-filter="active" onclick="setRouteFilter('active')">
+          <div class="stat-title">Обеспечены СР (>30 дн.)</div>
+          <div class="stat-value" id="statRoutesActive" style="color: var(--status-green);">0</div>
+          <div class="stat-desc">СР действуют в норме</div>
         </div>
-        <div class="stat-card yellow clickable" data-permit-filter="warning" onclick="setPermitFilter('warning')" title="Фильтр: осталось 15–30 дней">
-          <div class="stat-title">Скоро истекают</div>
-          <div class="stat-value" id="statPermitsWarning" style="color: var(--status-yellow);">0</div>
-          <div class="stat-desc">Осталось 15–30 дней</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
+        <div class="stat-card yellow clickable" data-route-filter="warning" onclick="setRouteFilter('warning')">
+          <div class="stat-title">СР скоро истекает (15–30 дн.)</div>
+          <div class="stat-value" id="statRoutesWarning" style="color: var(--status-yellow);">0</div>
+          <div class="stat-desc">Пора подавать на перевыпуск</div>
         </div>
-        <div class="stat-card orange clickable" data-permit-filter="critical" onclick="setPermitFilter('critical')" title="Фильтр: осталось 1–14 дней">
-          <div class="stat-title">Критичный срок</div>
-          <div class="stat-value" id="statPermitsCritical" style="color: var(--status-orange);">0</div>
-          <div class="stat-desc">Осталось 1–14 дней</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
+        <div class="stat-card orange clickable" data-route-filter="critical" onclick="setRouteFilter('critical')">
+          <div class="stat-title">Критичный срок (1–14 дн.)</div>
+          <div class="stat-value" id="statRoutesCritical" style="color: var(--status-orange);">0</div>
+          <div class="stat-desc">Срочное продление</div>
         </div>
-        <div class="stat-card red clickable" data-permit-filter="expired" onclick="setPermitFilter('expired')" title="Фильтр: просроченные СР">
-          <div class="stat-title">Просрочены</div>
-          <div class="stat-value" id="statPermitsExpired" style="color: var(--status-red);">0</div>
-          <div class="stat-desc">Выезд запрещен!</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
+        <div class="stat-card red clickable" data-route-filter="expired" onclick="setRouteFilter('expired')">
+          <div class="stat-title">СР просрочено / Нет СР</div>
+          <div class="stat-value" id="statRoutesExpired" style="color: var(--status-red);">0</div>
+          <div class="stat-desc">Рейсы невозможны!</div>
         </div>
       </div>
 
-      <!-- Панель поиска и фильтров -->
       <div class="toolbar">
         <div class="search-box">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="permitSearchInput" class="search-input" placeholder="Поиск: номер ООН, госномер ТС, № СР, № маршрута, город, погрузка...">
+          <input type="text" id="routeSearchInput" class="search-input" placeholder="Поиск маршрута: номер, города, ООН, грузоотправитель, грузополучатель...">
         </div>
-
         <div class="filter-group">
-          <button class="filter-btn active" data-filter="all" onclick="setPermitFilter('all')">Все</button>
-          <button class="filter-btn" data-filter="active" onclick="setPermitFilter('active')">Действуют</button>
-          <button class="filter-btn" data-filter="warning" onclick="setPermitFilter('warning')">15–30 дн.</button>
-          <button class="filter-btn" data-filter="critical" onclick="setPermitFilter('critical')">1–14 дн.</button>
-          <button class="filter-btn" data-filter="expired" onclick="setPermitFilter('expired')">Просрочены</button>
+          <button class="filter-btn active" data-rfilter="all" onclick="setRouteFilter('all')">Все</button>
+          <button class="filter-btn" data-rfilter="active" onclick="setRouteFilter('active')">Обеспечены</button>
+          <button class="filter-btn" data-rfilter="warning" onclick="setRouteFilter('warning')">15–30 дн.</button>
+          <button class="filter-btn" data-rfilter="critical" onclick="setRouteFilter('critical')">1–14 дн.</button>
+          <button class="filter-btn" data-rfilter="expired" onclick="setRouteFilter('expired')">Без СР / Просрочено</button>
         </div>
-
-        <button class="btn btn-primary" onclick="openAddPermitModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          + Новое Спецразрешение
+        <button class="btn btn-primary" onclick="openAddRouteModal()">
+          + Новый Маршрут
         </button>
       </div>
 
-      <!-- Таблица СР -->
+      <div class="table-card">
+        <div class="table-wrapper">
+          <table id="routesTable">
+            <thead>
+              <tr>
+                <th>Статус маршрута</th>
+                <th>№ Маршрута</th>
+                <th>Направление</th>
+                <th>Разрешенные ООН</th>
+                <th>Грузоотправители (Погрузка)</th>
+                <th>Грузополучатели (Разгрузка)</th>
+                <th>Привязанные СР</th>
+                <th style="text-align: right;">Действия</th>
+              </tr>
+            </thead>
+            <tbody id="routesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА 2: РЕЕСТР СПЕЦИАЛЬНЫХ РАЗРЕШЕНИЙ (СР) -->
+    <section id="tab-permits" class="tab-content" style="display: none;">
+      <div class="stats-grid">
+        <div class="stat-card total clickable active-filter" data-permit-filter="all" onclick="setPermitFilter('all')">
+          <div class="stat-title">Всего СР в автопарке</div>
+          <div class="stat-value" id="statPermitsTotal">0</div>
+          <div class="stat-desc">По всем автомобилям</div>
+        </div>
+        <div class="stat-card green clickable" data-permit-filter="active" onclick="setPermitFilter('active')">
+          <div class="stat-title">Действуют (>30 дн.)</div>
+          <div class="stat-value" id="statPermitsActive" style="color: var(--status-green);">0</div>
+          <div class="stat-desc">В норме</div>
+        </div>
+        <div class="stat-card yellow clickable" data-permit-filter="warning" onclick="setPermitFilter('warning')">
+          <div class="stat-title">Истекают (15–30 дн.)</div>
+          <div class="stat-value" id="statPermitsWarning" style="color: var(--status-yellow);">0</div>
+          <div class="stat-desc">Требуют внимания</div>
+        </div>
+        <div class="stat-card orange clickable" data-permit-filter="critical" onclick="setPermitFilter('critical')">
+          <div class="stat-title">Критично (1–14 дн.)</div>
+          <div class="stat-value" id="statPermitsCritical" style="color: var(--status-orange);">0</div>
+          <div class="stat-desc">Срочный перевыпуск</div>
+        </div>
+        <div class="stat-card red clickable" data-permit-filter="expired" onclick="setPermitFilter('expired')">
+          <div class="stat-title">Просрочены</div>
+          <div class="stat-value" id="statPermitsExpired" style="color: var(--status-red);">0</div>
+          <div class="stat-desc">Выезд запрещен!</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-box">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="permitSearchInput" class="search-input" placeholder="Поиск СР: номер СР, № маршрута, госномер авто...">
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn active" data-pfilter="all" onclick="setPermitFilter('all')">Все</button>
+          <button class="filter-btn" data-pfilter="active" onclick="setPermitFilter('active')">Действуют</button>
+          <button class="filter-btn" data-pfilter="warning" onclick="setPermitFilter('warning')">15–30 дн.</button>
+          <button class="filter-btn" data-pfilter="critical" onclick="setPermitFilter('critical')">1–14 дн.</button>
+          <button class="filter-btn" data-pfilter="expired" onclick="setPermitFilter('expired')">Просрочены</button>
+        </div>
+        <button class="btn btn-primary" onclick="openAddPermitModal()">
+          + Выпустить Спецразрешение
+        </button>
+      </div>
+
       <div class="table-card">
         <div class="table-wrapper">
           <table id="permitsTable">
             <thead>
               <tr>
-                <th>Статус / Срок</th>
-                <th>№ Маршрута</th>
-                <th>№ СР</th>
-                <th>Автомобиль</th>
-                <th>Номера ООН</th>
-                <th>Погрузка ➔ Разгрузка</th>
-                <th>Детали маршрута</th>
-                <th>Скан СР</th>
+                <th class="sortable-th" onclick="sortPermits('routeNumber')">№ Маршрута ⬍</th>
+                <th class="sortable-th" onclick="sortPermits('number')">№ СР ⬍</th>
+                <th class="sortable-th" onclick="sortPermits('vehicle')">Автомобиль ⬍</th>
+                <th>Маршрут и точки</th>
+                <th class="sortable-th" onclick="sortPermits('endDate')">Срок действия ⬍</th>
+                <th>Сканы СР</th>
                 <th style="text-align: right;">Действия</th>
               </tr>
             </thead>
@@ -147,42 +200,37 @@
       </div>
     </section>
 
-    <!-- ВКЛАДКА 2: АВТОПАРК -->
+    <!-- ВКЛАДКА 3: АВТОПАРК И ДОПУСКИ ДОПОГ -->
     <section id="tab-vehicles" class="tab-content" style="display: none;">
       <div class="stats-grid">
         <div class="stat-card total clickable active-filter" data-vehicle-filter="all" onclick="setVehicleFilter('all')">
           <div class="stat-title">Всего автомобилей</div>
           <div class="stat-value" id="statVehiclesTotal">0</div>
-          <div class="stat-desc">В автопарке компании</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
+          <div class="stat-desc">В парке организации</div>
         </div>
         <div class="stat-card green clickable" data-vehicle-filter="ok" onclick="setVehicleFilter('ok')">
           <div class="stat-title">Допуск ДОПОГ в норме</div>
           <div class="stat-value" id="statVehiclesOk" style="color: var(--status-green);">0</div>
           <div class="stat-desc">Срок > 30 дней</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
         </div>
         <div class="stat-card orange clickable" data-vehicle-filter="expiring" onclick="setVehicleFilter('expiring')">
-          <div class="stat-title">Допуск ДОПОГ истекает</div>
+          <div class="stat-title">Допуск истекает</div>
           <div class="stat-value" id="statVehiclesExpiring" style="color: var(--status-orange);">0</div>
           <div class="stat-desc">Осталось менее 30 дней</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
         </div>
         <div class="stat-card red clickable" data-vehicle-filter="expired" onclick="setVehicleFilter('expired')">
-          <div class="stat-title">Допуск ДОПОГ просрочен</div>
+          <div class="stat-title">Допуск просрочен</div>
           <div class="stat-value" id="statVehiclesExpired" style="color: var(--status-red);">0</div>
           <div class="stat-desc">Выезд на линию запрещен!</div>
-          <div class="click-hint">⚡ Нажмите для фильтра</div>
         </div>
       </div>
 
       <div class="toolbar">
         <div class="search-box">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="vehicleSearchInput" class="search-input" placeholder="Поиск авто по марке, номеру СТС, свидетельству ДОПОГ...">
+          <input type="text" id="vehicleSearchInput" class="search-input" placeholder="Поиск авто по госномеру, марке, СТС...">
         </div>
         <button class="btn btn-primary" onclick="openAddVehicleModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           + Добавить автомобиль
         </button>
       </div>
@@ -192,12 +240,12 @@
           <table id="vehiclesTable">
             <thead>
               <tr>
-                <th>Госномер</th>
-                <th>Марка / Модель</th>
-                <th>СТС (Свидетельство)</th>
-                <th>Допуск ДОПОГ</th>
+                <th style="min-width: 150px;">Госномер</th>
+                <th>Марка / Название</th>
+                <th>Документ СТС</th>
+                <th>Свидетельство ДОПОГ</th>
                 <th>Срок действия допуска</th>
-                <th>Активных СР</th>
+                <th>Действующих СР</th>
                 <th style="text-align: right;">Действия</th>
               </tr>
             </thead>
@@ -207,13 +255,13 @@
       </div>
     </section>
 
-    <!-- ВКЛАДКА 3: ЭКСПРЕСС-ПРОВЕРКА ГРУЗА ПО ООН -->
+    <!-- ВКЛАДКА 4: ПРОВЕРКА ГРУЗА ПО ООН -->
     <section id="tab-calc" class="tab-content" style="display: none;">
       <div class="calc-grid">
         <div class="calc-panel">
           <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">Экспресс-проверка груза (ДОПОГ / ОГПО)</h2>
           <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-            Оценка необходимости спецразрешения для перевозки в <strong>упаковках, канистрах, бочках, баллонах</strong> (без цистерн) по разделу 1.10.3.1.2 ДОПОГ.
+            Оценка необходимости спецразрешения при перевозке в <strong>упаковках, канистрах, бочках, баллонах</strong> (без цистерн) по разделу 1.10.3.1.2 ДОПОГ.
           </p>
 
           <div class="form-group" style="position: relative;">
@@ -230,7 +278,7 @@
 
           <div class="form-row" style="margin-top: 1rem;">
             <div class="form-group">
-              <label class="form-label">Масса груза нетто (кг):</label>
+              <label class="form-label">Масса партии нетто (кг):</label>
               <input type="number" id="calcWeightInput" class="form-input" placeholder="Например: 3500">
             </div>
             <div class="form-group">
@@ -245,7 +293,7 @@
           </div>
 
           <div style="margin-top: 1.25rem; display: flex; gap: 10px;">
-            <button class="btn btn-primary" onclick="runCargoCheck()" style="flex: 1;">
+            <button class="btn btn-primary" id="btnRunCheck" onclick="runCargoCheck()" style="flex: 1;">
               🔍 Проверить необходимость Спецразрешения
             </button>
             <button class="btn btn-secondary" onclick="resetCargoCheck()">Сбросить</button>
@@ -255,7 +303,7 @@
         <div class="calc-panel">
           <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">Заключение экспертной системы</h2>
           <div id="calcEmptyVerdict" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-            Введите номер ООН слева для получения официального заключения по ДОПОГ
+            Введите номер ООН слева и нажмите кнопку проверки
           </div>
 
           <div id="calcResultBox" class="verdict-box" style="display: none;">
@@ -265,39 +313,9 @@
             <div style="font-size: 0.82rem; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 8px; margin-top: 8px;" id="verdictNote"></div>
             
             <div style="margin-top: 1rem;">
-              <button class="btn btn-primary btn-sm" id="btnCreatePermitFromCalc">
-                ➕ Создать СР с данным грузом ООН
+              <button class="btn btn-primary btn-sm" id="btnCreateRouteFromCalc" onclick="createRouteFromCalc()">
+                ➕ Создать Маршрут с данным грузом ООН
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ВКЛАДКА 4: ПАКЕТ ДОКУМЕНТОВ (ЗАДЕЛ ПОД ИТЕРАЦИЮ №2) -->
-    <section id="tab-docs" class="tab-content" style="display: none;">
-      <div class="table-card" style="padding: 2rem;">
-        <div style="max-width: 800px; margin: 0 auto;">
-          <span class="brand-badge" style="background:#3b82f6;color:#fff;">Итерация №2</span>
-          <h2 style="font-size: 1.5rem; font-weight: 800; margin-top: 8px; margin-bottom: 8px;">Генератор пакета документов для согласования в УГАДН</h2>
-          <p style="color: var(--text-muted); font-size: 0.92rem; margin-bottom: 1.5rem;">
-            Модуль автозаполнения форм по Приказу Минтранса РФ № 258 на основе профиля ТС и маршрута.
-          </p>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-            <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; background: var(--bg-main);">
-              <div style="font-size: 1.4rem;">📑</div>
-              <h4 style="margin: 6px 0;">Заявление на выдачу СР</h4>
-              <p style="font-size: 0.8rem; color: var(--text-muted);">Формирование бланка с маршрутом и кодами ООН</p>
-            </div>
-            <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; background: var(--bg-main);">
-              <div style="font-size: 1.4rem;">💳</div>
-              <h4 style="margin: 6px 0;">Рапорт на госпошлину</h4>
-              <p style="font-size: 0.8rem; color: var(--text-muted);">Реквизиты УГАДН на 1 300 руб.</p>
-            </div>
-            <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; background: var(--bg-main);">
-              <div style="font-size: 1.4rem;">📦</div>
-              <h4 style="margin: 6px 0;">Пакет СТС + ДОПОГ</h4>
-              <p style="font-size: 0.8rem; color: var(--text-muted);">Объединение сканов в один PDF для Госуслуг</p>
             </div>
           </div>
         </div>
@@ -306,92 +324,136 @@
 
   </main>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ/РЕДАКТИРОВАТЬ СР -->
-  <div class="modal-overlay" id="permitModal">
-    <div class="modal-card">
+  <!-- МОДАЛЬНОЕ ОКНО: МАРШРУТ (ДОБАВИТЬ/РЕДАКТИРОВАТЬ) -->
+  <div class="modal-overlay" id="routeModal">
+    <div class="modal-card" style="max-width: 700px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="permitModalTitle">Новое специальное разрешение</h3>
+        <h3 class="modal-title" id="routeModalTitle">Карточка Маршрута</h3>
+        <button class="modal-close-btn" onclick="closeModal('routeModal')">&times;</button>
+      </div>
+      <form id="routeForm">
+        <div class="modal-body">
+          <input type="hidden" id="routeEditId">
+
+          <div class="form-row">
+            <div class="form-group" style="max-width: 160px;">
+              <label class="form-label">№ Маршрута *</label>
+              <input type="number" id="formRouteNumber" class="form-input" placeholder="5" required min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Название / Направление маршрута *</label>
+              <input type="text" id="formRouteName" class="form-input" placeholder="г. Омск ➔ г. Новосибирск" required>
+            </div>
+          </div>
+
+          <!-- Разрешенные ООН с маской 0000 -->
+          <div class="form-group">
+            <label class="form-label">Разрешенные номера ООН *</label>
+            <div class="tags-input-container" id="routeUnTagsContainer">
+              <input type="text" class="tags-raw-input" id="routeUnTagInput" placeholder="Введите ООН (например: 5 или 1202) и нажмите Enter...">
+            </div>
+            <span class="form-hint">Маска ДОПОГ: число 5 автоматически запишется как 0005, 12 как 0012</span>
+          </div>
+
+          <!-- Грузоотправители (погрузка) -->
+          <div class="form-group">
+            <label class="form-label">Грузоотправители и места погрузки *</label>
+            <div class="tags-input-container" id="routeLoadTagsContainer">
+              <input type="text" class="tags-raw-input" id="routeLoadTagInput" placeholder="Введите склад погрузки и нажмите Enter...">
+            </div>
+          </div>
+
+          <!-- Грузополучатели (разгрузка) -->
+          <div class="form-group">
+            <label class="form-label">Грузополучатели и места разгрузки *</label>
+            <div class="tags-input-container" id="routeUnloadTagsContainer">
+              <input type="text" class="tags-raw-input" id="routeUnloadTagInput" placeholder="Введите склад выгрузки и нажмите Enter...">
+            </div>
+          </div>
+
+          <!-- Детальное описание -->
+          <div class="form-group">
+            <label class="form-label">Детальный маршрут</label>
+            <textarea id="formRouteDetail" class="form-textarea" rows="3" placeholder="г. Омск, погрузка: Нефтезавод склад 3 -> а/д Р-254 Иртыш -> г. Барабинск -> г. Новосибирск, разгрузка: Терминал Восток"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('routeModal')">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить Маршрут</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ПРОСМОТР МАРШРУТА СО СПИСКОМ СР И ПАКЕТОМ ДОКУМЕНТОВ -->
+  <div class="modal-overlay" id="routeDetailModal">
+    <div class="modal-card" style="max-width: 860px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="routeDetailTitle">Маршрут № 5: Омск — Новосибирск</h3>
+        <button class="modal-close-btn" onclick="closeModal('routeDetailModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="routeDetailBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('routeDetailModal')">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ/РЕДАКТИРОВАТЬ СР (ПРИВЯЗКА К МАРШРУТУ И АВТО) -->
+  <div class="modal-overlay" id="permitModal">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="permitModalTitle">Выпуск Специального Разрешения</h3>
         <button class="modal-close-btn" onclick="closeModal('permitModal')">&times;</button>
       </div>
       <form id="permitForm">
         <div class="modal-body">
           <input type="hidden" id="permitEditId">
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Номер маршрута (число) *</label>
-              <input type="number" id="permitRouteNumber" class="form-input" placeholder="Например: 142" required min="1">
-              <span class="form-hint">Порядковый номер маршрута УГАДН</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Номер спецразрешения *</label>
-              <input type="text" id="permitNumber" class="form-input" placeholder="77-00452-26" required>
-            </div>
+          <div class="form-group">
+            <label class="form-label">Привязка к маршруту из реестра *</label>
+            <select id="permitRouteSelect" class="form-select" required></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Автомобиль из автопарка *</label>
+            <select id="permitVehicleSelect" class="form-select" required></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Номер спецразрешения (маска ХХ ХХХХХХ/э) *</label>
+            <input type="text" id="permitNumber" class="form-input" placeholder="77 123456/э" required maxlength="12">
           </div>
 
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group date-1c-wrapper">
               <label class="form-label">Дата выдачи (начала) *</label>
-              <input type="date" id="permitStartDate" class="form-input" required onchange="handleStartDateChange(this.value)">
+              <div class="date-input-group">
+                <input type="text" id="permitStartDate" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ" required>
+                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'permitStartDate')">
+              </div>
             </div>
-            <div class="form-group">
+            <div class="form-group date-1c-wrapper">
               <label class="form-label">Срок действия (по) *</label>
-              <input type="date" id="permitEndDate" class="form-input" required>
-              <span class="form-hint">⚡ Авторасчет: +1 год - 1 день</span>
+              <div class="date-input-group">
+                <input type="text" id="permitEndDate" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ" required>
+                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'permitEndDate')">
+              </div>
             </div>
           </div>
 
+          <!-- Множественная загрузка файлов -->
           <div class="form-group">
-            <label class="form-label">Автомобиль из реестра *</label>
-            <select id="permitVehicleSelect" class="form-select" required>
-              <option value="">-- Выберите автомобиль --</option>
-            </select>
-          </div>
-
-          <!-- Номера ООН тегами -->
-          <div class="form-group">
-            <label class="form-label">Номера ООН (тегами) *</label>
-            <div class="tags-input-container" id="unTagsContainer">
-              <input type="text" class="tags-raw-input" id="unTagInput" placeholder="Введите ООН (например: 1202) и Enter...">
-            </div>
-          </div>
-
-          <!-- Места погрузки тегами -->
-          <div class="form-group">
-            <label class="form-label">Места погрузки (тегами) *</label>
-            <div class="tags-input-container" id="loadTagsContainer">
-              <input type="text" class="tags-raw-input" id="loadTagInput" list="loadLocationsDatalist" placeholder="Например: г. Москва, Нефтебаза №1...">
-            </div>
-            <datalist id="loadLocationsDatalist"></datalist>
-          </div>
-
-          <!-- Места разгрузки тегами -->
-          <div class="form-group">
-            <label class="form-label">Места разгрузки (тегами) *</label>
-            <div class="tags-input-container" id="unloadTagsContainer">
-              <input type="text" class="tags-raw-input" id="unloadTagInput" list="unloadLocationsDatalist" placeholder="Например: г. Нижний Новгород, Промбаза...">
-            </div>
-            <datalist id="unloadLocationsDatalist"></datalist>
-          </div>
-
-          <!-- Детализация маршрута -->
-          <div class="form-group">
-            <label class="form-label">Детальный маршрут перевозки (большое поле)</label>
-            <textarea id="permitRouteDetail" class="form-textarea" rows="3" placeholder="Пример: г. Москва, погрузка: Склад №1 -> а/д М-7 Волга -> г. Владимир -> г. Нижний Новгород, разгрузка: Терминал"></textarea>
-            <span class="form-hint">Города подсвечиваются <strong>жирным</strong>, а точки — бейджами.</span>
-          </div>
-
-          <!-- Файл СР -->
-          <div class="form-group">
-            <label class="form-label">Скан Спецразрешения (PDF / Изображение)</label>
-            <input type="file" id="permitFileInput" class="form-input" accept=".pdf,image/*">
-            <div id="permitCurrentFileInfo" style="display: none; margin-top: 4px;"></div>
+            <label class="form-label">Скан спецразрешения (можно выбрать несколько файлов/страниц)</label>
+            <input type="file" id="permitFilesInput" class="form-input" accept=".pdf,image/*" multiple>
+            <div id="permitCurrentFilesList" style="margin-top: 6px;"></div>
           </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeModal('permitModal')">Отмена</button>
-          <button type="submit" class="btn btn-primary" id="btnSavePermit">Сохранить СР</button>
+          <button type="submit" class="btn btn-primary">Сохранить СР</button>
         </div>
       </form>
     </div>
@@ -411,23 +473,23 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Госномер ТС *</label>
-              <input type="text" id="vehiclePlate" class="form-input" placeholder="А 123 АА 777" required>
+              <input type="text" id="vehiclePlate" class="form-input" placeholder="У 511 НС 155" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Марка / Название авто *</label>
-              <input type="text" id="vehicleBrand" class="form-input" placeholder="КАМАЗ 5490 / ГАЗель" required>
+              <label class="form-label">Марка / Модель *</label>
+              <input type="text" id="vehicleBrand" class="form-input" placeholder="КАМАЗ 5490 NEO" required>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Номер СТС</label>
-              <input type="text" id="vehicleStsNumber" class="form-input" placeholder="77 22 984512">
+              <input type="text" id="vehicleStsNumber" class="form-input" placeholder="55 12 345678">
             </div>
             <div class="form-group">
-              <label class="form-label">Файл СТС (скан)</label>
+              <label class="form-label">Скан СТС</label>
               <input type="file" id="vehicleStsFile" class="form-input" accept=".pdf,image/*">
-              <div id="vehicleStsFileCurrent" style="display: none; margin-top: 4px;"></div>
+              <div id="vehicleStsCurrentFile"></div>
             </div>
           </div>
 
@@ -435,36 +497,34 @@
 
           <div class="form-group">
             <label class="form-label">Номер свидетельства о допуске ДОПОГ</label>
-            <input type="text" id="vehicleDopogNumber" class="form-input" placeholder="ДОПОГ № 77-00341">
+            <input type="text" id="vehicleDopogNumber" class="form-input" placeholder="ДОПОГ № 55-0012">
           </div>
 
           <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Дата выдачи допуска</label>
-              <input type="date" id="vehicleDopogIssueDate" class="form-input">
-            </div>
-            <div class="form-group">
+            <div class="form-group date-1c-wrapper">
               <label class="form-label">Срок действия допуска ДОПОГ (по) *</label>
-              <input type="date" id="vehicleDopogExpiryDate" class="form-input" required>
+              <div class="date-input-group">
+                <input type="text" id="vehicleDopogExpiryDate" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ" required>
+                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'vehicleDopogExpiryDate')">
+              </div>
             </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Файл Свидетельства о допуске ДОПОГ (скан)</label>
-            <input type="file" id="vehicleDopogFile" class="form-input" accept=".pdf,image/*">
-            <div id="vehicleDopogFileCurrent" style="display: none; margin-top: 4px;"></div>
+            <div class="form-group">
+              <label class="form-label">Скан Свидетельства ДОПОГ</label>
+              <input type="file" id="vehicleDopogFile" class="form-input" accept=".pdf,image/*">
+              <div id="vehicleDopogCurrentFile"></div>
+            </div>
           </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeModal('vehicleModal')">Отмена</button>
-          <button type="submit" class="btn btn-primary" id="btnSaveVehicle">Сохранить авто</button>
+          <button type="submit" class="btn btn-primary">Сохранить авто</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: КАРТОЧКА АВТО СО СПИСКОМ СР -->
+  <!-- МОДАЛЬНОЕ ОКНО: КАРТОЧКА АВТО СО СПИСКОМ ДОКУМЕНТОВ И СР -->
   <div class="modal-overlay" id="vehicleDetailModal">
     <div class="modal-card" style="max-width: 820px;">
       <div class="modal-header">
@@ -478,43 +538,63 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ПРОФИЛЬ КОНСУЛЬТАНТА ДОПОГ -->
-  <div class="modal-overlay" id="consultantModal">
-    <div class="modal-card" style="max-width: 520px;">
+  <!-- МОДАЛЬНОЕ ОКНО: ПРОФИЛЬ КОНСУЛЬТАНТА И ОРГАНИЗАЦИИ -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-card" style="max-width: 540px;">
       <div class="modal-header">
-        <h3 class="modal-title">Карточка консультанта по ДОПОГ</h3>
-        <button class="modal-close-btn" onclick="closeModal('consultantModal')">&times;</button>
+        <h3 class="modal-title">Карточка организации и консультанта ДОПОГ</h3>
+        <button class="modal-close-btn" onclick="closeModal('profileModal')">&times;</button>
       </div>
-      <form id="consultantForm">
+      <form id="profileForm">
         <div class="modal-body">
+          <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;">Данные организации</h4>
           <div class="form-group">
-            <label class="form-label">ФИО консультанта / ответственного лица *</label>
+            <label class="form-label">Название организации *</label>
+            <input type="text" id="profCompanyName" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ИНН организации</label>
+            <input type="text" id="profCompanyInn" class="form-input" placeholder="10 или 12 цифр">
+          </div>
+
+          <div style="border-top:1px solid var(--border-color);margin:8px 0;"></div>
+          <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;">Свидетельство консультанта по ДОПОГ</h4>
+
+          <div class="form-group">
+            <label class="form-label">ФИО ответственного консультанта *</label>
             <input type="text" id="profFullName" class="form-input" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Номер свидетельства консультанта ДОПОГ</label>
-            <input type="text" id="profCertNum" class="form-input" placeholder="Например: ДОПОГ-КОНС № 77/00452">
+            <label class="form-label">Номер свидетельства консультанта</label>
+            <input type="text" id="profCertNum" class="form-input" placeholder="ДОПОГ-КОНС № 55/00142">
           </div>
+
           <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Дата выдачи (с)</label>
-              <input type="date" id="profCertStart" class="form-input">
+            <div class="form-group date-1c-wrapper">
+              <label class="form-label">Выдано с</label>
+              <div class="date-input-group">
+                <input type="text" id="profCertStart" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ">
+                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'profCertStart')">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Срок действия (по)</label>
-              <input type="date" id="profCertEnd" class="form-input">
+            <div class="form-group date-1c-wrapper">
+              <label class="form-label">Действует по</label>
+              <div class="date-input-group">
+                <input type="text" id="profCertEnd" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ">
+                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'profCertEnd')">
+              </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('consultantModal')">Отмена</button>
-          <button type="submit" class="btn btn-primary">Сохранить профиль</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('profileModal')">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Всплывающие уведомления (Toast) -->
+  <!-- Toast контейнер -->
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="dopog-db.js"></script>

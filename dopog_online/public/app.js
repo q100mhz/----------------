@@ -2,21 +2,28 @@ let authToken = localStorage.getItem('dopog_token');
 let currentUser = null;
 
 let appData = {
-  vehicles: [],
+  routes: [],
   permits: [],
-  locations: []
+  vehicles: []
 };
 
-let currentUnTags = [];
-let currentLoadTags = [];
-let currentUnloadTags = [];
+// Текущие теги в модальных окнах
+let currentRouteUnTags = [];
+let currentRouteLoadTags = [];
+let currentRouteUnloadTags = [];
 
+// Фильтры дашборда
+let activeRouteFilter = 'all';
 let activePermitFilter = 'all';
 let activeVehicleFilter = 'all';
 
+// Сортировка реестра СР
+let permitSortField = 'routeNumber';
+let permitSortAsc = true;
+
 if (!authToken) window.location.href = '/login.html';
 
-// API обертка с токеном
+// Обертка для API-запросов
 async function apiRequest(endpoint, options = {}) {
   const headers = options.headers || {};
   if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
@@ -32,119 +39,129 @@ async function apiRequest(endpoint, options = {}) {
   return response;
 }
 
-// Формула даты окончания: +1 год - 1 день
-function calculatePermitEndDate(startDateStr) {
-  if (!startDateStr) return '';
-  const [year, month, day] = startDateStr.split('-').map(Number);
-  // Добавляем 1 календарный год
-  const end = new Date(year + 1, month - 1, day);
-  // Вычитаем 1 день
-  end.setDate(end.getDate() - 1);
-
-  const y = end.getFullYear();
-  const m = String(end.getMonth() + 1).padStart(2, '0');
-  const d = String(end.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function handleStartDateChange(val) {
-  const endInput = document.getElementById('permitEndDate');
-  if (val && endInput) {
-    endInput.value = calculatePermitEndDate(val);
-  }
-}
-
-// Загрузка профиля консультанта
-async function loadUserProfile() {
-  try {
-    const res = await apiRequest('/api/auth/me');
-    if (!res) return;
-    const data = await res.json();
-    currentUser = data.user;
-
-    document.getElementById('userFullName').textContent = currentUser.full_name || currentUser.email;
-    document.getElementById('userCompanyName').textContent = currentUser.company_name || 'Организация';
-    document.getElementById('userAvatar').textContent = (currentUser.full_name || 'К')[0].toUpperCase();
-
-    const certBadge = document.getElementById('consultantCertBadge');
-    if (currentUser.consultant_cert_number) {
-      const stat = calculateStatus(currentUser.consultant_cert_end);
-      certBadge.innerHTML = `Свид. № ${escapeHtml(currentUser.consultant_cert_number)} (<span style="color:${stat.days > 0 ? '#10b981':'#ef4444'}">${stat.label}</span>)`;
-    } else {
-      certBadge.textContent = 'Свидетельство не указано';
-    }
-  } catch (e) {}
-}
-
 function logoutUser() {
   localStorage.removeItem('dopog_token');
   localStorage.removeItem('dopog_user');
   window.location.href = '/login.html';
 }
 
-// Загрузка данных с сервера
-async function loadServerData() {
-  try {
-    const [vRes, pRes, lRes] = await Promise.all([
-      apiRequest('/api/vehicles'),
-      apiRequest('/api/permits'),
-      apiRequest('/api/locations')
-    ]);
+// --- ЛОГИКА ВВОДА ДАТ ПО ПРИНЦИПУ 1С ---
+function parseAndFormatDate1C(inputStr) {
+  if (!inputStr) return '';
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
 
-    if (vRes && vRes.ok) {
-      const v = await vRes.json();
-      appData.vehicles = v.vehicles.map(item => ({
-        id: item.id,
-        plate: item.plate,
-        brand: item.brand,
-        stsNumber: item.sts_number,
-        stsFileName: item.sts_file_name,
-        stsFilePath: item.sts_file_path,
-        dopogNumber: item.dopog_number,
-        dopogIssueDate: item.dopog_issue_date,
-        dopogExpiryDate: item.dopog_expiry_date,
-        dopogFileName: item.dopog_file_name,
-        dopogFilePath: item.dopog_file_path
-      }));
-    }
+  // Очищаем от лишних символов
+  let val = inputStr.trim().replace(/[\/\s,-]+/g, '.');
+  const parts = val.split('.').filter(p => p.length > 0);
 
-    if (pRes && pRes.ok) {
-      const p = await pRes.json();
-      appData.permits = p.permits;
-    }
+  let d = '', m = '', y = '';
 
-    if (lRes && lRes.ok) {
-      const l = await lRes.json();
-      appData.locations = l.locations || [];
-      populateLocationDatalists();
-    }
+  if (parts.length === 1) {
+    // Ввели только день (например 5 или 18)
+    d = String(parseInt(parts[0], 10)).padStart(2, '0');
+    m = currentMonth;
+    y = String(currentYear);
+  } else if (parts.length === 2) {
+    // Ввели день и месяц (например 15.02)
+    d = String(parseInt(parts[0], 10)).padStart(2, '0');
+    m = String(parseInt(parts[1], 10)).padStart(2, '0');
+    y = String(currentYear);
+  } else if (parts.length >= 3) {
+    // Ввели день, месяц и год
+    d = String(parseInt(parts[0], 10)).padStart(2, '0');
+    m = String(parseInt(parts[1], 10)).padStart(2, '0');
+    let rawY = parseInt(parts[2], 10);
+    if (rawY < 100) rawY += 2000;
+    y = String(rawY);
+  } else {
+    return inputStr;
+  }
 
-    renderAll();
-    checkExpiringForPush();
-  } catch (err) {
-    showToast('Ошибка загрузки данных', 'error');
+  // Валидация даты
+  const testDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+  if (isNaN(testDate.getTime())) return inputStr;
+
+  return `${d}.${m}.${y}`;
+}
+
+// Преобразование даты ДД.ММ.ГГГГ в формат ISO ГГГГ-ММ-ДД для хранения
+function date1CToIso(str) {
+  if (!str) return '';
+  if (str.includes('-')) return str;
+  const parts = str.split('.');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+  }
+  return str;
+}
+
+// Преобразование ISO ГГГГ-ММ-ДД в ДД.ММ.ГГГГ для отображения
+function isoToDate1C(iso) {
+  if (!iso) return '';
+  if (iso.includes('.')) return iso;
+  const parts = iso.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  }
+  return iso;
+}
+
+// Синхронизация выбора из календарика
+function syncDateFromPicker(pickerInput, textInputId) {
+  if (pickerInput.value) {
+    const [y, m, d] = pickerInput.value.split('-');
+    const textInput = document.getElementById(textInputId);
+    textInput.value = `${d}.${m}.${y}`;
+    textInput.dispatchEvent(new Event('change'));
   }
 }
 
-// Заполнение datalist для подсказок адресов
-function populateLocationDatalists() {
-  const loadDl = document.getElementById('loadLocationsDatalist');
-  const unloadDl = document.getElementById('unloadLocationsDatalist');
-  if (loadDl) loadDl.innerHTML = '';
-  if (unloadDl) unloadDl.innerHTML = '';
+// Авторасчет даты окончания: +1 год - 1 день
+function calculateEndDate(start1CStr) {
+  const iso = date1CToIso(start1CStr);
+  if (!iso || !iso.includes('-')) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  const end = new Date(y + 1, m - 1, d);
+  end.setDate(end.getDate() - 1);
 
-  appData.locations.forEach(loc => {
-    const opt = document.createElement('option');
-    opt.value = loc.name;
-    if (loc.type === 'load' && loadDl) loadDl.appendChild(opt);
-    if (loc.type === 'unload' && unloadDl) unloadDl.appendChild(opt);
-  });
+  const resD = String(end.getDate()).padStart(2, '0');
+  const resM = String(end.getMonth() + 1).padStart(2, '0');
+  const resY = end.getFullYear();
+  return `${resD}.${resM}.${resY}`;
 }
 
-// Расчет статусов и сроков (30 - 15 - 0)
+// --- МАСКА НОМЕРА СПЕЦРАЗРЕШЕНИЯ ХХ ХХХХХХ/э ---
+function applyPermitNumberMask(input) {
+  let val = input.value.replace(/[^0-9]/g, '');
+  if (val.length > 8) val = val.substring(0, 8);
+
+  let formatted = '';
+  if (val.length > 0) {
+    formatted = val.substring(0, 2);
+  }
+  if (val.length > 2) {
+    formatted += ' ' + val.substring(2, 8);
+  }
+  if (val.length >= 8) {
+    formatted += '/э';
+  }
+  input.value = formatted;
+}
+
+// --- МАСКА ООН (0001, 0012, 1202) ---
+function formatUnNumber(raw) {
+  const clean = raw.trim().replace(/[^0-9]/g, '');
+  if (!clean) return '';
+  return clean.padStart(4, '0');
+}
+
+// --- РАСЧЕТ СРОКОВ (30 - 15 - 0) ---
 function calculateStatus(endDateStr) {
   if (!endDateStr) return { days: 0, status: 'expired', label: 'Не указан', cssClass: 'danger-red' };
-  const end = new Date(endDateStr);
+  const iso = date1CToIso(endDateStr);
+  const end = new Date(iso);
   const now = new Date();
   end.setHours(0, 0, 0, 0);
   now.setHours(0, 0, 0, 0);
@@ -162,100 +179,339 @@ function calculateStatus(endDateStr) {
   }
 }
 
-// Форматирование маршрута: города - жирным, точки - бейджами
-function formatRouteHtml(rawText) {
-  if (!rawText) return '<span style="color:var(--text-muted);">Маршрут не детализирован</span>';
-  let text = escapeHtml(rawText);
+// --- ОПОВЕЩЕНИЯ И PUSH ---
+function requestPushPermission() {
+  if (!('Notification' in window)) return showToast('Браузер не поддерживает Push-уведомления', 'warning');
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') {
+      showToast('✓ Уведомления включены', 'success');
+      checkAllAlerts();
+    }
+  });
+}
 
-  text = text.replace(/\[?\b(погрузка|отгрузка|загрузка|пункт погрузки)[\s:]+([^,;\]\n\->]+)\]?/gi, '<span class="route-badge badge-load">🟢 $1: $2</span>');
-  text = text.replace(/\[?\b(разгрузка|выгрузка|слив|пункт разгрузки)[\s:]+([^,;\]\n\->]+)\]?/gi, '<span class="route-badge badge-unload">🔵 $1: $2</span>');
-  text = text.replace(/\b((?:г\.|город|пос\.|пгт\.|дер\.|с\.)\s*[А-Яа-яЁёA-Za-z0-9\-]+)/gi, '<strong class="route-city">$1</strong>');
+function triggerInstantAlert(title, text, type = 'warning') {
+  showToast(`⚠️ ${title}: ${text}`, type);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body: text });
+  }
+}
 
-  const majorCities = ['Москва', 'Санкт-Петербург', 'Нижний Новгород', 'Казань', 'Самара', 'Екатеринбург', 'Уфа', 'Пермь', 'Челябинск', 'Омск', 'Ростов-на-Дону', 'Краснодар', 'Воронеж', 'Волгоград', 'Саратов', 'Тюмень', 'Тольятти', 'Владимир', 'Дзержинск', 'Рязань', 'Набережные Челны', 'Елабуга', 'Коломна', 'Воскресенск'];
-  majorCities.forEach(c => {
-    if (text.indexOf(c) !== -1) {
-      const reg = new RegExp('(^|[^>А-Яа-яЁё0-9])(' + c + ')(?![А-Яа-яЁё0-9<])', 'g');
-      text = text.replace(reg, '$1<strong class="route-city">$2</strong>');
+function checkAllAlerts() {
+  // Проверка СР
+  appData.permits.forEach(p => {
+    const s = calculateStatus(p.end_date);
+    if (s.status === 'critical' || s.status === 'expired') {
+      triggerInstantAlert('Внимание: ДОПОГ Спецразрешение', `СР № ${p.number} (Маршрут № ${p.routeNumber}): ${s.label}`);
     }
   });
 
-  return text;
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
-
-// Копирование чистого маршрута в буфер
-function copyRouteText(textToCopy) {
-  if (!textToCopy) return;
-  const decoded = textToCopy.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-  navigator.clipboard.writeText(decoded).then(() => {
-    showToast('✓ Маршрут скопирован как обычный текст!', 'success');
-  }).catch(() => {
-    const t = document.createElement('textarea');
-    t.value = decoded;
-    document.body.appendChild(t);
-    t.select();
-    document.execCommand('copy');
-    document.body.removeChild(t);
-    showToast('✓ Маршрут скопирован в буфер!', 'success');
+  // Проверка авто
+  appData.vehicles.forEach(v => {
+    const s = calculateStatus(v.dopog_expiry_date);
+    if (s.status === 'critical' || s.status === 'expired') {
+      triggerInstantAlert('Внимание: Допуск ТС', `Авто ${v.plate}: допуск ДОПОГ ${s.label}`);
+    }
   });
+
+  // Проверка консультанта
+  if (currentUser && currentUser.consultant_cert_end) {
+    const s = calculateStatus(currentUser.consultant_cert_end);
+    if (s.status === 'critical' || s.status === 'expired') {
+      triggerInstantAlert('Свидетельство консультанта ДОПОГ', `Свидетельство консультанта: ${s.label}`);
+    }
+  }
 }
 
-// Быстрый фильтр реестра по дашборду
-function setPermitFilter(filterKey) {
-  activePermitFilter = (activePermitFilter === filterKey && filterKey !== 'all') ? 'all' : filterKey;
+// --- ЗАГРУЗКА ДАННЫХ С СЕРВЕРА ---
+async function loadServerData() {
+  try {
+    const [rRes, pRes, vRes] = await Promise.all([
+      apiRequest('/api/routes'),
+      apiRequest('/api/permits'),
+      apiRequest('/api/vehicles')
+    ]);
 
-  document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.toggle('active', b.getAttribute('data-filter') === activePermitFilter));
-  document.querySelectorAll('.stat-card[data-permit-filter]').forEach(c => c.classList.toggle('active-filter', c.getAttribute('data-permit-filter') === activePermitFilter));
+    if (rRes && rRes.ok) {
+      const data = await rRes.json();
+      appData.routes = data.routes || [];
+    }
+    if (pRes && pRes.ok) {
+      const data = await pRes.json();
+      appData.permits = data.permits || [];
+    }
+    if (vRes && vRes.ok) {
+      const data = await vRes.json();
+      appData.vehicles = data.vehicles || [];
+    }
+
+    renderAll();
+  } catch (err) {
+    showToast('Ошибка загрузки данных с сервера', 'error');
+  }
+}
+
+async function loadUserProfile() {
+  try {
+    const res = await apiRequest('/api/auth/me');
+    if (!res) return;
+    const data = await res.json();
+    currentUser = data.user;
+
+    document.getElementById('userFullName').textContent = currentUser.full_name || currentUser.email;
+    document.getElementById('userCompanyName').textContent = currentUser.company_name || 'Организация';
+    document.getElementById('userAvatar').textContent = (currentUser.full_name || 'К')[0].toUpperCase();
+
+    const certBadge = document.getElementById('consultantCertBadge');
+    if (currentUser.consultant_cert_number) {
+      const s = calculateStatus(currentUser.consultant_cert_end);
+      certBadge.innerHTML = `Свид. № ${escapeHtml(currentUser.consultant_cert_number)} (<span style="color:${s.days > 0 ? '#10b981':'#ef4444'}">${s.label}</span>)`;
+    } else {
+      certBadge.textContent = 'Свидетельство не указано';
+    }
+  } catch (e) {}
+}
+
+// --- ОТРИСОВКА: 1. РЕЕСТР МАРШРУТОВ ---
+function getRouteAggregateStatus(route) {
+  if (!route.permits || route.permits.length === 0) {
+    return { status: 'expired', label: 'Нет спецразрешений', cssClass: 'danger-red' };
+  }
+
+  // Находим самое актуальное СР с максимальным сроком
+  let bestDays = -9999;
+  let bestStatus = null;
+
+  route.permits.forEach(p => {
+    const s = calculateStatus(p.end_date);
+    if (s.days > bestDays) {
+      bestDays = s.days;
+      bestStatus = s;
+    }
+  });
+
+  if (bestStatus.status === 'active') {
+    return { status: 'active', label: `Обеспечен СР (${bestDays} дн.)`, cssClass: 'active-green' };
+  } else if (bestStatus.status === 'warning') {
+    return { status: 'warning', label: `СР истекает (${bestDays} дн.)`, cssClass: 'warning-yellow' };
+  } else if (bestStatus.status === 'critical') {
+    return { status: 'critical', label: `Критично (${bestDays} дн.)`, cssClass: 'critical-orange' };
+  } else {
+    return { status: 'expired', label: 'СР просрочено', cssClass: 'danger-red' };
+  }
+}
+
+function renderRoutes() {
+  const tbody = document.getElementById('routesTableBody');
+  const search = (document.getElementById('routeSearchInput')?.value || '').trim().toLowerCase();
+  if (!tbody) return;
+
+  let total = 0, active = 0, warning = 0, critical = 0, expired = 0;
+  appData.routes.forEach(r => {
+    total++;
+    const s = getRouteAggregateStatus(r);
+    if (s.status === 'active') active++;
+    else if (s.status === 'warning') warning++;
+    else if (s.status === 'critical') critical++;
+    else if (s.status === 'expired') expired++;
+  });
+
+  document.getElementById('statRoutesTotal').textContent = total;
+  document.getElementById('statRoutesActive').textContent = active;
+  document.getElementById('statRoutesWarning').textContent = warning;
+  document.getElementById('statRoutesCritical').textContent = critical;
+  document.getElementById('statRoutesExpired').textContent = expired;
+  document.getElementById('routesCountBadge').textContent = total;
+
+  const filtered = appData.routes.filter(r => {
+    const s = getRouteAggregateStatus(r);
+    if (activeRouteFilter !== 'all' && s.status !== activeRouteFilter) return false;
+
+    if (search) {
+      const q = `${r.route_number} ${r.name} ${(r.unCodes || []).join(' ')} ${(r.pointsLoad || []).join(' ')} ${(r.pointsUnload || []).join(' ')} ${r.route_detail || ''}`.toLowerCase();
+      if (!q.includes(search)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="empty-icon">🗺️</div><p>Маршрутов не найдено</p></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const s = getRouteAggregateStatus(r);
+    const unPills = (r.unCodes || []).map(u => `<span class="un-pill">ООН ${escapeHtml(u)}</span>`).join('');
+    const loadPills = (r.pointsLoad || []).map(p => `<span class="route-badge badge-load">🟢 ${escapeHtml(p)}</span>`).join(' ');
+    const unloadPills = (r.pointsUnload || []).map(p => `<span class="route-badge badge-unload">🔵 ${escapeHtml(p)}</span>`).join(' ');
+
+    const permitsCount = r.permits ? r.permits.length : 0;
+    const permitsLabel = permitsCount > 0 ? `<span class="brand-badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;">${permitsCount} СР привязано</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Нет СР</span>';
+
+    return `
+      <tr>
+        <td><span class="status-badge ${s.cssClass}">${s.label}</span></td>
+        <td><strong style="font-size:1.05rem;color:var(--primary);">№ ${r.route_number}</strong></td>
+        <td>
+          <a href="javascript:void(0)" onclick="openRouteDetailModal('${r.id}')" style="font-weight:700;color:var(--text-main);text-decoration:underline;">
+            ${escapeHtml(r.name)}
+          </a>
+        </td>
+        <td>${unPills || '—'}</td>
+        <td style="max-width:240px;">${loadPills || '—'}</td>
+        <td style="max-width:240px;">${unloadPills || '—'}</td>
+        <td>
+          ${permitsLabel}
+          <div style="margin-top:4px;">
+            <button class="btn btn-secondary btn-sm" onclick="openAddPermitForRoute('${r.id}')" style="font-size:0.74rem;">+ Выпустить СР</button>
+          </div>
+        </td>
+        <td style="text-align:right;white-space:nowrap;">
+          <button class="btn btn-secondary btn-sm" onclick="openRouteDetailModal('${r.id}')" title="Карточка маршрута и пакет документов">📋 Маршрут</button>
+          <button class="btn btn-secondary btn-sm" onclick="editRoute('${r.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRoute('${r.id}')">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Карточка маршрута (детальный просмотр + пакет документов + список СР)
+function openRouteDetailModal(routeId) {
+  const r = appData.routes.find(item => item.id === routeId);
+  if (!r) return;
+
+  const s = getRouteAggregateStatus(r);
+  document.getElementById('routeDetailTitle').textContent = `Маршрут № ${r.route_number}: ${r.name}`;
+
+  const permits = r.permits || [];
+  let permitsTableHtml = '';
+
+  if (permits.length === 0) {
+    permitsTableHtml = `
+      <div style="padding:1.5rem;text-align:center;color:var(--text-muted);background:var(--bg-main);border-radius:8px;">
+        К данному маршруту еще не выпущено ни одного спецразрешения.
+        <div style="margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="closeModal('routeDetailModal'); openAddPermitForRoute('${r.id}')">
+            + Выпустить первое Спецразрешение на автомобиль
+          </button>
+        </div>
+      </div>
+    `;
+  } else {
+    permitsTableHtml = `
+      <table style="width:100%;font-size:0.85rem;">
+        <thead><tr style="background:#f1f5f9;"><th>Статус</th><th>№ СР</th><th>Автомобиль</th><th>Срок действия</th><th>Файлы</th></tr></thead>
+        <tbody>
+          ${permits.map(p => {
+            const pStat = calculateStatus(p.end_date);
+            const files = p.files || [];
+            const filesHtml = files.map(f => `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(f.path)}" target="_blank" download="${escapeHtml(f.name)}">📄 ${escapeHtml(f.name)}</a>`).join(' ');
+            return `
+              <tr>
+                <td><span class="status-badge ${pStat.cssClass}">${pStat.label}</span></td>
+                <td><strong>${escapeHtml(p.number)}</strong></td>
+                <td>${escapeHtml(p.plate)} (${escapeHtml(p.brand)})</td>
+                <td>до ${isoToDate1C(p.end_date)}</td>
+                <td>${filesHtml || '—'}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  const plainRouteText = `${(r.pointsLoad || []).join('; ')} ➔ ${(r.pointsUnload || []).join('; ')}. ${r.route_detail || ''}`;
+
+  document.getElementById('routeDetailBody').innerHTML = `
+    <div style="background:var(--bg-main);padding:1.25rem;border-radius:8px;border:1px solid var(--border-color);margin-bottom:1.25rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span class="status-badge ${s.cssClass}">${s.label}</span>
+        <button class="btn btn-secondary btn-sm" onclick="copyPlainRoute('${r.id}')">📋 Скопировать весь маршрут</button>
+      </div>
+
+      <div style="margin-bottom:6px;"><strong>Разрешенные ООН:</strong> ${(r.unCodes || []).map(u => `<span class="un-pill">ООН ${escapeHtml(u)}</span>`).join('')}</div>
+      <div style="margin-bottom:6px;"><strong>Грузоотправители (погрузка):</strong> ${(r.pointsLoad || []).map(p => `<span class="route-badge badge-load">🟢 ${escapeHtml(p)}</span>`).join(' ')}</div>
+      <div style="margin-bottom:6px;"><strong>Грузополучатели (разгрузка):</strong> ${(r.pointsUnload || []).map(p => `<span class="route-badge badge-unload">🔵 ${escapeHtml(p)}</span>`).join(' ')}</div>
+      <div><strong>Нитка маршрута:</strong> ${escapeHtml(r.route_detail || 'Не детализирована')}</div>
+    </div>
+
+    <!-- Раздел: Пакет документов (внутри карточки маршрута) -->
+    <div style="background:#eff6ff;padding:1.25rem;border-radius:8px;border:1px solid #bfdbfe;margin-bottom:1.5rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <h4 style="font-weight:700;color:#1e40af;margin-bottom:4px;">📦 Подготовка пакета документов в УГАДН</h4>
+          <p style="font-size:0.82rem;color:#3b82f6;">Формирование заявления по Приказу Минтранса № 258, рапорта на оплату госпошлины (1 300 ₽) и комплекта допусков ТС по Маршруту № ${r.route_number}</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showToast('Функционал автогенерации бланков запланирован в 3-й итерации', 'info')">
+          Сформировать пакет (Итерация 3)
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h4 style="font-weight:700;">Специальные разрешения, выпущенные для данного маршрута (${permits.length})</h4>
+        <button class="btn btn-primary btn-sm" onclick="closeModal('routeDetailModal'); openAddPermitForRoute('${r.id}')">+ Выпустить СР на авто</button>
+      </div>
+      <div style="border:1px solid var(--border-color);border-radius:6px;overflow:hidden;">
+        ${permitsTableHtml}
+      </div>
+    </div>
+  `;
+
+  openModal('routeDetailModal');
+}
+
+// Надежное копирование маршрута по ID
+function copyPlainRoute(routeId) {
+  const r = appData.routes.find(item => item.id === routeId);
+  if (!r) return;
+  const text = `Маршрут № ${r.route_number}: ${(r.pointsLoad || []).join('; ')} -> ${(r.pointsUnload || []).join('; ')}. ${r.route_detail || ''}`;
+  copyTextToClipboard(text);
+}
+
+function copyPermitRoute(permitId) {
+  const p = appData.permits.find(item => item.id === permitId);
+  if (!p) return;
+  const text = `Маршрут № ${p.routeNumber} (${p.number}): ${(p.pointsLoad || []).join('; ')} -> ${(p.pointsUnload || []).join('; ')}. ${p.route_detail || ''}`;
+  copyTextToClipboard(text);
+}
+
+function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('✓ Текст маршрута скопирован в буфер обмена!', 'success');
+    }).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showToast('✓ Текст маршрута скопирован в буфер!', 'success');
+}
+
+// --- ОТРИСОВКА: 2. РЕЕСТР СПЕЦРАЗРЕШЕНИЙ (СР) ---
+function sortPermits(field) {
+  if (permitSortField === field) {
+    permitSortAsc = !permitSortAsc;
+  } else {
+    permitSortField = field;
+    permitSortAsc = true;
+  }
   renderPermits();
 }
 
-function setVehicleFilter(filterKey) {
-  activeVehicleFilter = (activeVehicleFilter === filterKey && filterKey !== 'all') ? 'all' : filterKey;
-
-  document.querySelectorAll('.stat-card[data-vehicle-filter]').forEach(c => c.classList.toggle('active-filter', c.getAttribute('data-vehicle-filter') === activeVehicleFilter));
-  renderVehicles();
-}
-
-// Управление тегами (ООН, Погрузка, Разгрузка)
-function setupTagInput(containerId, inputId, tagsArray) {
-  const container = document.getElementById(containerId);
-  const input = document.getElementById(inputId);
-  if (!container || !input) return;
-
-  function renderTags() {
-    container.querySelectorAll('.tag-badge').forEach(b => b.remove());
-    tagsArray.forEach((val, idx) => {
-      const badge = document.createElement('span');
-      badge.className = 'tag-badge';
-      badge.innerHTML = `${escapeHtml(val)} <span class="tag-remove">&times;</span>`;
-      badge.querySelector('.tag-remove').onclick = () => {
-        tagsArray.splice(idx, 1);
-        renderTags();
-      };
-      container.insertBefore(badge, input);
-    });
-  }
-
-  input.onkeydown = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const clean = input.value.trim().replace(/^ООН\s*/i, '');
-      if (clean && !tagsArray.includes(clean)) {
-        tagsArray.push(clean);
-        input.value = '';
-        renderTags();
-      }
-    }
-  };
-
-  renderTags();
-}
-
-// Отрисовка реестра СР
 function renderPermits() {
   const tbody = document.getElementById('permitsTableBody');
   const search = (document.getElementById('permitSearchInput')?.value || '').trim().toLowerCase();
@@ -263,8 +519,8 @@ function renderPermits() {
 
   let total = 0, active = 0, warning = 0, critical = 0, expired = 0;
   appData.permits.forEach(p => {
-    const s = calculateStatus(p.endDate);
     total++;
+    const s = calculateStatus(p.end_date);
     if (s.status === 'active') active++;
     else if (s.status === 'warning') warning++;
     else if (s.status === 'critical') critical++;
@@ -278,61 +534,64 @@ function renderPermits() {
   document.getElementById('statPermitsExpired').textContent = expired;
   document.getElementById('permitsCountBadge').textContent = total;
 
-  const filtered = appData.permits.filter(p => {
-    const s = calculateStatus(p.endDate);
+  let filtered = appData.permits.filter(p => {
+    const s = calculateStatus(p.end_date);
     if (activePermitFilter !== 'all' && s.status !== activePermitFilter) return false;
 
     if (search) {
-      const v = appData.vehicles.find(item => item.id === p.vehicle_id);
-      const str = `${p.number} ${p.routeNumber} ${(p.unCodes || []).join(' ')} ${(p.pointsLoad || []).join(' ')} ${(p.pointsUnload || []).join(' ')} ${p.routeDetail || ''} ${v ? v.plate + ' ' + v.brand : ''}`.toLowerCase();
-      if (!str.includes(search)) return false;
+      const q = `${p.routeNumber} ${p.number} ${p.plate} ${p.brand} ${p.routeName || ''}`.toLowerCase();
+      if (!q.includes(search)) return false;
     }
     return true;
   });
 
+  // Ранжирование / сортировка
+  filtered.sort((a, b) => {
+    let valA = a[permitSortField];
+    let valB = b[permitSortField];
+
+    if (permitSortField === 'routeNumber') {
+      valA = a.routeNumber || 0;
+      valB = b.routeNumber || 0;
+    } else if (permitSortField === 'vehicle') {
+      valA = (a.plate || '').toLowerCase();
+      valB = (b.plate || '').toLowerCase();
+    } else if (permitSortField === 'endDate') {
+      valA = a.end_date;
+      valB = b.end_date;
+    }
+
+    if (valA < valB) return permitSortAsc ? -1 : 1;
+    if (valA > valB) return permitSortAsc ? 1 : -1;
+    return 0;
+  });
+
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="empty-icon">📂</div><p>Специальных разрешений не найдено</p></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="empty-icon">📂</div><p>Спецразрешений не найдено</p></td></tr>';
     return;
   }
 
   tbody.innerHTML = filtered.map(p => {
-    const s = calculateStatus(p.endDate);
-    const v = appData.vehicles.find(item => item.id === p.vehicle_id);
-    const vLabel = v ? `<strong>${escapeHtml(v.plate)}</strong><br><small style="color:var(--text-muted);">${escapeHtml(v.brand)}</small>` : '—';
-    const unPills = (p.unCodes || []).map(c => `<span class="un-pill">ООН ${escapeHtml(c)}</span>`).join('');
-    
-    const loadBadges = (p.pointsLoad || []).map(l => `<span class="route-badge badge-load">🟢 ${escapeHtml(l)}</span>`).join(' ');
-    const unloadBadges = (p.pointsUnload || []).map(u => `<span class="route-badge badge-unload">🔵 ${escapeHtml(u)}</span>`).join(' ');
-
-    const plainTextRoute = `${(p.pointsLoad || []).join('; ')} -> ${(p.pointsUnload || []).join('; ')}. ${p.routeDetail || ''}`;
-    const cleanPlainForCopy = escapeHtml(plainTextRoute).replace(/'/g, "\\'");
-
-    let fileLink = '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
-    if (p.filePath) {
-      fileLink = `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(p.filePath)}" target="_blank" download="${escapeHtml(p.fileName || 'permit.pdf')}">📄 ${escapeHtml(p.fileName || 'Скан')}</a>`;
-    }
+    const s = calculateStatus(p.end_date);
+    const files = p.files || [];
+    const filesHtml = files.length > 0
+      ? files.map(f => `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(f.path)}" target="_blank" download="${escapeHtml(f.name)}">📄 ${escapeHtml(f.name)}</a>`).join(' ')
+      : '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
 
     return `
       <tr>
+        <td><strong style="color:var(--primary);font-size:1.05rem;">№ ${p.routeNumber}</strong></td>
+        <td><strong>${escapeHtml(p.number)}</strong><br><small style="color:var(--text-muted);">выдано: ${isoToDate1C(p.start_date)}</small></td>
+        <td><strong>${escapeHtml(p.plate)}</strong><br><small style="color:var(--text-muted);">${escapeHtml(p.brand)}</small></td>
+        <td>
+          <div style="font-weight:600;font-size:0.85rem;">${escapeHtml(p.routeName || 'Маршрут')}</div>
+          <button class="route-copy-btn" onclick="copyPermitRoute('${p.id}')">📋 Скопировать маршрут</button>
+        </td>
         <td>
           <span class="status-badge ${s.cssClass}">${s.label}</span>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">До: ${escapeHtml(p.endDate)}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">До: ${isoToDate1C(p.end_date)}</div>
         </td>
-        <td><span class="brand-badge" style="background:#f1f5f9;color:#334155;font-weight:700;font-size:0.85rem;">№ ${escapeHtml(p.routeNumber)}</span></td>
-        <td><strong>${escapeHtml(p.number)}</strong><br><small style="color:var(--text-muted);">с ${escapeHtml(p.startDate)}</small></td>
-        <td>${vLabel}</td>
-        <td style="max-width:160px;">${unPills || '—'}</td>
-        <td style="max-width:260px;">
-          <div>${loadBadges}</div>
-          <div style="margin-top:2px;">${unloadBadges}</div>
-        </td>
-        <td style="max-width:320px;">
-          <div class="route-cell-content">
-            <div>${formatRouteHtml(p.routeDetail)}</div>
-            <button class="route-copy-btn" onclick="copyRouteText('${cleanPlainForCopy}')">📋 Скопировать маршрут</button>
-          </div>
-        </td>
-        <td>${fileLink}</td>
+        <td style="max-width:200px;">${filesHtml}</td>
         <td style="text-align:right;white-space:nowrap;">
           <button class="btn btn-secondary btn-sm" onclick="editPermit('${p.id}')">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deletePermit('${p.id}')">🗑️</button>
@@ -342,7 +601,7 @@ function renderPermits() {
   }).join('');
 }
 
-// Отрисовка автопарка
+// --- ОТРИСОВКА: 3. РЕЕСТР АВТОМОБИЛЕЙ ---
 function renderVehicles() {
   const tbody = document.getElementById('vehiclesTableBody');
   const search = (document.getElementById('vehicleSearchInput')?.value || '').trim().toLowerCase();
@@ -351,7 +610,7 @@ function renderVehicles() {
   let total = 0, okCount = 0, expCount = 0, expiredCount = 0;
   appData.vehicles.forEach(v => {
     total++;
-    const s = calculateStatus(v.dopogExpiryDate);
+    const s = calculateStatus(v.dopog_expiry_date);
     if (s.status === 'active') okCount++;
     else if (s.status === 'warning' || s.status === 'critical') expCount++;
     else if (s.status === 'expired') expiredCount++;
@@ -364,13 +623,13 @@ function renderVehicles() {
   document.getElementById('vehiclesCountBadge').textContent = total;
 
   const filtered = appData.vehicles.filter(v => {
-    const s = calculateStatus(v.dopogExpiryDate);
+    const s = calculateStatus(v.dopog_expiry_date);
     if (activeVehicleFilter === 'ok' && s.status !== 'active') return false;
     if (activeVehicleFilter === 'expiring' && s.status !== 'warning' && s.status !== 'critical') return false;
     if (activeVehicleFilter === 'expired' && s.status !== 'expired') return false;
 
     if (search) {
-      const q = `${v.plate} ${v.brand} ${v.stsNumber || ''} ${v.dopogNumber || ''}`.toLowerCase();
+      const q = `${v.plate} ${v.brand} ${v.sts_number || ''} ${v.dopog_number || ''}`.toLowerCase();
       if (!q.includes(search)) return false;
     }
     return true;
@@ -382,23 +641,23 @@ function renderVehicles() {
   }
 
   tbody.innerHTML = filtered.map(v => {
-    const s = calculateStatus(v.dopogExpiryDate);
-    const count = appData.permits.filter(p => p.vehicle_id === v.id).length;
+    const s = calculateStatus(v.dopog_expiry_date);
+    const activePermitsCount = appData.permits.filter(p => p.vehicle_id === v.id).length;
 
-    let stsHtml = v.stsNumber ? `<strong>${escapeHtml(v.stsNumber)}</strong>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Не указано</span>';
-    if (v.stsFilePath) {
-      stsHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.stsFilePath)}" target="_blank" download="${escapeHtml(v.stsFileName || 'sts.pdf')}">📄 ${escapeHtml(v.stsFileName || 'СТС')}</a>`;
+    let stsHtml = v.sts_number ? `<strong>${escapeHtml(v.sts_number)}</strong>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Не указано</span>';
+    if (v.sts_file_path) {
+      stsHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" target="_blank" download="СТС_${escapeHtml(v.plate)}.pdf">📄 СТС</a>`;
     }
 
-    let dopogHtml = v.dopogNumber ? `<strong>${escapeHtml(v.dopogNumber)}</strong>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Не оформлен</span>';
-    if (v.dopogFilePath) {
-      dopogHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopogFilePath)}" target="_blank" download="${escapeHtml(v.dopogFileName || 'dopog.pdf')}">📄 ${escapeHtml(v.dopogFileName || 'ДОПОГ')}</a>`;
+    let dopogHtml = v.dopog_number ? `<strong>${escapeHtml(v.dopog_number)}</strong>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Не оформлен</span>';
+    if (v.dopog_file_path) {
+      dopogHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" target="_blank" download="ДОПОГ_${escapeHtml(v.plate)}.pdf">📄 Допуск ДОПОГ</a>`;
     }
 
     return `
       <tr>
-        <td>
-          <a href="javascript:void(0)" onclick="openVehicleCard('${v.id}')" style="font-weight:700;color:var(--primary);text-decoration:underline;">
+        <td style="min-width:150px;white-space:nowrap;">
+          <a href="javascript:void(0)" onclick="openVehicleCard('${v.id}')" style="font-weight:700;color:var(--primary);text-decoration:underline;font-size:1rem;">
             ${escapeHtml(v.plate)}
           </a>
         </td>
@@ -407,11 +666,11 @@ function renderVehicles() {
         <td>${dopogHtml}</td>
         <td>
           <span class="status-badge ${s.cssClass}">${s.label}</span>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">До: ${escapeHtml(v.dopogExpiryDate)}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">До: ${isoToDate1C(v.dopog_expiry_date)}</div>
         </td>
-        <td><span class="brand-badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;">${count} СР</span></td>
+        <td><span class="brand-badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;">${activePermitsCount} СР</span></td>
         <td style="text-align:right;white-space:nowrap;">
-          <button class="btn btn-secondary btn-sm" onclick="openVehicleCard('${v.id}')">📋 Досье</button>
+          <button class="btn btn-secondary btn-sm" onclick="openVehicleCard('${v.id}')">📋 Документы авто</button>
           <button class="btn btn-secondary btn-sm" onclick="editVehicle('${v.id}')">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteVehicle('${v.id}')">🗑️</button>
         </td>
@@ -420,46 +679,56 @@ function renderVehicles() {
   }).join('');
 }
 
-// Карточка ТС с привязанными СР
+// Карточка автомобиля (таблица: слева СТС, справа ДОПОГ)
 function openVehicleCard(id) {
   const v = appData.vehicles.find(item => item.id === id);
   if (!v) return;
 
+  const s = calculateStatus(v.dopog_expiry_date);
   const linked = appData.permits.filter(p => p.vehicle_id === id);
-  const s = calculateStatus(v.dopogExpiryDate);
 
   document.getElementById('vehicleDetailTitle').textContent = `Автомобиль: ${v.plate} — ${v.brand}`;
   document.getElementById('vehicleDetailBody').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;background:var(--bg-main);padding:1rem;border-radius:8px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;background:var(--bg-main);padding:1.25rem;border-radius:8px;border:1px solid var(--border-color);margin-bottom:1.5rem;">
+      <!-- Слева: СТС -->
       <div>
-        <h4 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;">Данные ТС и СТС</h4>
-        <div style="font-size:1.15rem;font-weight:700;">${escapeHtml(v.plate)}</div>
+        <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Документ СТС</h4>
+        <div style="font-size:1.15rem;font-weight:700;margin-bottom:4px;">${escapeHtml(v.plate)}</div>
         <div style="color:#334155;font-weight:600;margin-bottom:6px;">${escapeHtml(v.brand)}</div>
-        <div>СТС: <strong>${escapeHtml(v.stsNumber || 'Не указан')}</strong></div>
-        ${v.stsFilePath ? `<div style="margin-top:4px;"><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.stsFilePath)}" target="_blank" download="${escapeHtml(v.stsFileName || 'sts.pdf')}">📄 Скачать скан СТС</a></div>` : ''}
+        <div>Номер СТС: <strong>${escapeHtml(v.sts_number || 'Не указан')}</strong></div>
+        <div style="margin-top:8px;">
+          ${v.sts_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" target="_blank" download="СТС_${escapeHtml(v.plate)}.pdf">📄 Скачать файл СТС</a>` : '<span style="color:var(--text-muted);font-size:0.8rem;">Файл СТС не загружен</span>'}
+        </div>
       </div>
+
+      <!-- Справа: Допуск ДОПОГ -->
       <div>
-        <h4 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;">Свидетельство о допуске ДОПОГ</h4>
-        <div><strong>${escapeHtml(v.dopogNumber || 'Номер не указан')}</strong></div>
-        <div style="margin:4px 0;"><span class="status-badge ${s.cssClass}">${s.label}</span></div>
-        <div style="font-size:0.85rem;color:var(--text-muted);">Срок действия до: <strong>${escapeHtml(v.dopogExpiryDate)}</strong></div>
-        ${v.dopogFilePath ? `<div style="margin-top:4px;"><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopogFilePath)}" target="_blank" download="${escapeHtml(v.dopogFileName || 'dopog.pdf')}">📄 Скачать допуск ДОПОГ</a></div>` : ''}
+        <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Свидетельство о допуске ДОПОГ</h4>
+        <div style="font-weight:700;margin-bottom:4px;">${escapeHtml(v.dopog_number || 'Номер не указан')}</div>
+        <div style="margin-bottom:6px;"><span class="status-badge ${s.cssClass}">${s.label}</span></div>
+        <div style="font-size:0.85rem;color:var(--text-muted);">Срок окончания действия: <strong>${isoToDate1C(v.dopog_expiry_date)}</strong></div>
+        <div style="margin-top:8px;">
+          ${v.dopog_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" target="_blank" download="ДОПОГ_${escapeHtml(v.plate)}.pdf">📄 Скачать файл допуска ДОПОГ</a>` : '<span style="color:var(--text-muted);font-size:0.8rem;">Файл допуска не загружен</span>'}
+        </div>
       </div>
     </div>
+
     <div>
-      <h3 style="font-size:1rem;font-weight:700;margin-bottom:8px;">Специальные разрешения, закрепленные за автомобилем (${linked.length})</h3>
+      <h4 style="font-weight:700;margin-bottom:8px;">Специальные разрешения автомобиля (${linked.length})</h4>
       <table style="width:100%;font-size:0.85rem;">
-        <thead><tr style="background:#f1f5f9;"><th>Статус</th><th>№ Маршрута</th><th>№ СР</th><th>Номера ООН</th><th>Срок до</th></tr></thead>
+        <thead><tr style="background:#f1f5f9;"><th>Статус</th><th>№ Маршрута</th><th>№ СР</th><th>Маршрут</th><th>Срок действия</th></tr></thead>
         <tbody>
-          ${linked.length === 0 ? '<tr><td colspan="5" style="text-align:center;padding:1rem;color:var(--text-muted);">Спецразрешений не закреплено</td></tr>' : linked.map(p => {
-            const stat = calculateStatus(p.endDate);
-            return `<tr>
-              <td><span class="status-badge ${stat.cssClass}">${stat.label}</span></td>
-              <td><strong>№ ${escapeHtml(p.routeNumber)}</strong></td>
-              <td>${escapeHtml(p.number)}</td>
-              <td>${(p.unCodes || []).map(c => `<span class="un-pill">ООН ${escapeHtml(c)}</span>`).join('')}</td>
-              <td>${escapeHtml(p.endDate)}</td>
-            </tr>`;
+          ${linked.length === 0 ? '<tr><td colspan="5" style="text-align:center;padding:1rem;color:var(--text-muted);">Спецразрешений не привязано</td></tr>' : linked.map(p => {
+            const pStat = calculateStatus(p.end_date);
+            return `
+              <tr>
+                <td><span class="status-badge ${pStat.cssClass}">${pStat.label}</span></td>
+                <td><strong>№ ${p.routeNumber}</strong></td>
+                <td>${escapeHtml(p.number)}</td>
+                <td>${escapeHtml(p.routeName || 'Маршрут')}</td>
+                <td>до ${isoToDate1C(p.end_date)}</td>
+              </tr>
+            `;
           }).join('')}
         </tbody>
       </table>
@@ -468,37 +737,125 @@ function openVehicleCard(id) {
   openModal('vehicleDetailModal');
 }
 
-// Заполнение выпадающего списка автомобилей для формы СР
-function populateVehicleSelect(selectedId = '') {
-  const sel = document.getElementById('permitVehicleSelect');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">-- Выберите автомобиль --</option>';
+// --- УПРАВЛЕНИЕ МАРШРУТАМИ ---
+function setupTagInput(containerId, inputId, tagsArray, isUn = false) {
+  const container = document.getElementById(containerId);
+  const input = document.getElementById(inputId);
+  if (!container || !input) return;
+
+  function renderTags() {
+    container.querySelectorAll('.tag-badge').forEach(b => b.remove());
+    tagsArray.forEach((val, idx) => {
+      const badge = document.createElement('span');
+      badge.className = 'tag-badge';
+      badge.innerHTML = `${escapeHtml(isUn ? 'ООН ' + val : val)} <span class="tag-remove">&times;</span>`;
+      badge.querySelector('.tag-remove').onclick = () => {
+        tagsArray.splice(idx, 1);
+        renderTags();
+      };
+      container.insertBefore(badge, input);
+    });
+  }
+
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      let raw = input.value.trim();
+      if (!raw) return;
+      let finalVal = isUn ? formatUnNumber(raw) : raw;
+      if (finalVal && !tagsArray.includes(finalVal)) {
+        tagsArray.push(finalVal);
+        input.value = '';
+        renderTags();
+      }
+    }
+  };
+
+  renderTags();
+}
+
+function openAddRouteModal() {
+  document.getElementById('routeForm').reset();
+  document.getElementById('routeEditId').value = '';
+  document.getElementById('routeModalTitle').textContent = 'Новый Маршрут перевозки ДОПОГ';
+
+  currentRouteUnTags = [];
+  currentRouteLoadTags = [];
+  currentRouteUnloadTags = [];
+
+  setupTagInput('routeUnTagsContainer', 'routeUnTagInput', currentRouteUnTags, true);
+  setupTagInput('routeLoadTagsContainer', 'routeLoadTagInput', currentRouteLoadTags);
+  setupTagInput('routeUnloadTagsContainer', 'routeUnloadTagInput', currentRouteUnloadTags);
+
+  openModal('routeModal');
+}
+
+function editRoute(id) {
+  const r = appData.routes.find(item => item.id === id);
+  if (!r) return;
+
+  document.getElementById('routeEditId').value = r.id;
+  document.getElementById('routeModalTitle').textContent = `Редактирование маршрута № ${r.route_number}`;
+  document.getElementById('formRouteNumber').value = r.route_number;
+  document.getElementById('formRouteName').value = r.name;
+  document.getElementById('formRouteDetail').value = r.route_detail || '';
+
+  currentRouteUnTags = [...(r.unCodes || [])];
+  currentRouteLoadTags = [...(r.pointsLoad || [])];
+  currentRouteUnloadTags = [...(r.pointsUnload || [])];
+
+  setupTagInput('routeUnTagsContainer', 'routeUnTagInput', currentRouteUnTags, true);
+  setupTagInput('routeLoadTagsContainer', 'routeLoadTagInput', currentRouteLoadTags);
+  setupTagInput('routeUnloadTagsContainer', 'routeUnloadTagInput', currentRouteUnloadTags);
+
+  openModal('routeModal');
+}
+
+async function deleteRoute(id) {
+  if (!confirm('Удалить маршрут и все привязанные к нему спецразрешения?')) return;
+  const res = await apiRequest(`/api/routes/${id}`, { method: 'DELETE' });
+  if (res && res.ok) {
+    showToast('Маршрут удален', 'success');
+    loadServerData();
+  }
+}
+
+// --- УПРАВЛЕНИЕ СПЕЦРАЗРЕШЕНИЯМИ (СР) ---
+function populatePermitModalSelects(selectedRouteId = '', selectedVehicleId = '') {
+  const rSel = document.getElementById('permitRouteSelect');
+  const vSel = document.getElementById('permitVehicleSelect');
+
+  rSel.innerHTML = '<option value="">-- Выберите маршрут --</option>';
+  appData.routes.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = `Маршрут № ${r.route_number}: ${r.name}`;
+    if (r.id === selectedRouteId) opt.selected = true;
+    rSel.appendChild(opt);
+  });
+
+  vSel.innerHTML = '<option value="">-- Выберите автомобиль --</option>';
   appData.vehicles.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.id;
     opt.textContent = `${v.plate} (${v.brand})`;
-    if (v.id === selectedId) opt.selected = true;
-    sel.appendChild(opt);
+    if (v.id === selectedVehicleId) opt.selected = true;
+    vSel.appendChild(opt);
   });
 }
 
-// Операции со спецразрешениями
 function openAddPermitModal() {
   document.getElementById('permitForm').reset();
   document.getElementById('permitEditId').value = '';
-  document.getElementById('permitModalTitle').textContent = 'Новое специальное разрешение';
-  document.getElementById('permitCurrentFileInfo').style.display = 'none';
-
-  currentUnTags = [];
-  currentLoadTags = [];
-  currentUnloadTags = [];
-
-  setupTagInput('unTagsContainer', 'unTagInput', currentUnTags);
-  setupTagInput('loadTagsContainer', 'loadTagInput', currentLoadTags);
-  setupTagInput('unloadTagsContainer', 'unloadTagInput', currentUnloadTags);
-
-  populateVehicleSelect();
+  document.getElementById('permitModalTitle').textContent = 'Выпуск Специального Разрешения';
+  document.getElementById('permitCurrentFilesList').innerHTML = '';
+  populatePermitModalSelects();
   openModal('permitModal');
+}
+
+function openAddPermitForRoute(routeId) {
+  openAddPermitModal();
+  populatePermitModalSelects(routeId);
 }
 
 function editPermit(id) {
@@ -506,48 +863,40 @@ function editPermit(id) {
   if (!p) return;
 
   document.getElementById('permitEditId').value = p.id;
-  document.getElementById('permitModalTitle').textContent = `Редактирование СР № ${p.number}`;
-  document.getElementById('permitRouteNumber').value = p.routeNumber;
+  document.getElementById('permitModalTitle').textContent = `Редактирование СР ${p.number}`;
+  populatePermitModalSelects(p.route_id, p.vehicle_id);
+
   document.getElementById('permitNumber').value = p.number;
-  document.getElementById('permitStartDate').value = p.startDate;
-  document.getElementById('permitEndDate').value = p.endDate;
-  document.getElementById('permitRouteDetail').value = p.routeDetail || '';
+  document.getElementById('permitStartDate').value = isoToDate1C(p.start_date);
+  document.getElementById('permitEndDate').value = isoToDate1C(p.end_date);
 
-  populateVehicleSelect(p.vehicle_id);
-
-  currentUnTags = [...(p.unCodes || [])];
-  currentLoadTags = [...(p.pointsLoad || [])];
-  currentUnloadTags = [...(p.pointsUnload || [])];
-
-  setupTagInput('unTagsContainer', 'unTagInput', currentUnTags);
-  setupTagInput('loadTagsContainer', 'loadTagInput', currentLoadTags);
-  setupTagInput('unloadTagsContainer', 'unloadTagInput', currentUnloadTags);
-
-  const fInfo = document.getElementById('permitCurrentFileInfo');
-  if (p.fileName) {
-    fInfo.style.display = 'block';
-    fInfo.innerHTML = `<small style="color:var(--text-muted);">Прикреплен файл: <strong>${escapeHtml(p.fileName)}</strong></small>`;
-  } else fInfo.style.display = 'none';
+  const files = p.files || [];
+  const listEl = document.getElementById('permitCurrentFilesList');
+  if (files.length > 0) {
+    listEl.innerHTML = files.map(f => `<span class="file-chip">📄 ${escapeHtml(f.name)}</span>`).join(' ');
+  } else {
+    listEl.innerHTML = '';
+  }
 
   openModal('permitModal');
 }
 
 async function deletePermit(id) {
-  if (!confirm('Вы уверены, что хотите удалить Спецразрешение?')) return;
-  const res = await apiRequest('/api/permits/' + id, { method: 'DELETE' });
+  if (!confirm('Удалить специальное разрешение?')) return;
+  const res = await apiRequest(`/api/permits/${id}`, { method: 'DELETE' });
   if (res && res.ok) {
     showToast('Спецразрешение удалено', 'success');
     loadServerData();
   }
 }
 
-// Операции с автомобилями
+// --- УПРАВЛЕНИЕ АВТОМОБИЛЯМИ ---
 function openAddVehicleModal() {
   document.getElementById('vehicleForm').reset();
   document.getElementById('vehicleEditId').value = '';
   document.getElementById('vehicleModalTitle').textContent = 'Добавить автомобиль';
-  document.getElementById('vehicleStsFileCurrent').style.display = 'none';
-  document.getElementById('vehicleDopogFileCurrent').style.display = 'none';
+  document.getElementById('vehicleStsCurrentFile').innerHTML = '';
+  document.getElementById('vehicleDopogCurrentFile').innerHTML = '';
   openModal('vehicleModal');
 }
 
@@ -559,75 +908,44 @@ function editVehicle(id) {
   document.getElementById('vehicleModalTitle').textContent = `Редактирование: ${v.plate}`;
   document.getElementById('vehiclePlate').value = v.plate;
   document.getElementById('vehicleBrand').value = v.brand;
-  document.getElementById('vehicleStsNumber').value = v.stsNumber || '';
-  document.getElementById('vehicleDopogNumber').value = v.dopogNumber || '';
-  document.getElementById('vehicleDopogIssueDate').value = v.dopogIssueDate || '';
-  document.getElementById('vehicleDopogExpiryDate').value = v.dopogExpiryDate || '';
+  document.getElementById('vehicleStsNumber').value = v.sts_number || '';
+  document.getElementById('vehicleDopogNumber').value = v.dopog_number || '';
+  document.getElementById('vehicleDopogExpiryDate').value = isoToDate1C(v.dopog_expiry_date);
 
-  const stsCur = document.getElementById('vehicleStsFileCurrent');
-  if (v.stsFileName) {
-    stsCur.style.display = 'block';
-    stsCur.innerHTML = `<small style="color:var(--text-muted);">Файл: <strong>${escapeHtml(v.stsFileName)}</strong></small>`;
-  } else stsCur.style.display = 'none';
+  const stsCur = document.getElementById('vehicleStsCurrentFile');
+  stsCur.innerHTML = v.sts_file_path ? `<span class="file-chip">📄 ${escapeHtml(v.sts_file_name || 'СТС')}</span>` : '';
 
-  const dopogCur = document.getElementById('vehicleDopogFileCurrent');
-  if (v.dopogFileName) {
-    dopogCur.style.display = 'block';
-    dopogCur.innerHTML = `<small style="color:var(--text-muted);">Файл: <strong>${escapeHtml(v.dopogFileName)}</strong></small>`;
-  } else dopogCur.style.display = 'none';
+  const dopCur = document.getElementById('vehicleDopogCurrentFile');
+  dopCur.innerHTML = v.dopog_file_path ? `<span class="file-chip">📄 ${escapeHtml(v.dopog_file_name || 'ДОПОГ')}</span>` : '';
 
   openModal('vehicleModal');
 }
 
 async function deleteVehicle(id) {
   const count = appData.permits.filter(p => p.vehicle_id === id).length;
-  if (count > 0 && !confirm(`К автомобилю привязано ${count} СР! Удалить?`)) return;
+  if (count > 0 && !confirm(`К автомобилю привязано ${count} СР! При удалении авто удалятся и СР. Продолжить?`)) return;
   if (count === 0 && !confirm('Удалить автомобиль?')) return;
 
-  const res = await apiRequest('/api/vehicles/' + id, { method: 'DELETE' });
+  const res = await apiRequest(`/api/vehicles/${id}`, { method: 'DELETE' });
   if (res && res.ok) {
     showToast('Автомобиль удален', 'success');
     loadServerData();
   }
 }
 
-// Профиль консультанта
-function openConsultantModal() {
+// --- ПРОФИЛЬ ОРГАНИЗАЦИИ И КОНСУЛЬТАНТА ---
+function openProfileModal() {
   if (!currentUser) return;
+  document.getElementById('profCompanyName').value = currentUser.company_name || '';
+  document.getElementById('profCompanyInn').value = currentUser.company_inn || '';
   document.getElementById('profFullName').value = currentUser.full_name || '';
   document.getElementById('profCertNum').value = currentUser.consultant_cert_number || '';
-  document.getElementById('profCertStart').value = currentUser.consultant_cert_start || '';
-  document.getElementById('profCertEnd').value = currentUser.consultant_cert_end || '';
-  openModal('consultantModal');
+  document.getElementById('profCertStart').value = isoToDate1C(currentUser.consultant_cert_start || '');
+  document.getElementById('profCertEnd').value = isoToDate1C(currentUser.consultant_cert_end || '');
+  openModal('profileModal');
 }
 
-// Push-уведомления
-function requestPushPermission() {
-  if (!('Notification' in window)) return showToast('Браузер не поддерживает Push-уведомления', 'warning');
-  Notification.requestPermission().then(permission => {
-    if (permission === 'granted') {
-      showToast('✓ Браузерные уведомления включены', 'success');
-      checkExpiringForPush();
-    }
-  });
-}
-
-function checkExpiringForPush() {
-  if (Notification.permission !== 'granted') return;
-  const criticalPermits = appData.permits.filter(p => {
-    const s = calculateStatus(p.endDate);
-    return s.status === 'critical' || s.status === 'expired';
-  });
-
-  if (criticalPermits.length > 0) {
-    new Notification('Внимание: ДОПОГ Спецразрешения!', {
-      body: `Внимание! У вас ${criticalPermits.length} спецразрешений в критичном или просроченном статусе!`,
-      icon: '/favicon.ico'
-    });
-  }
-}
-
-// Экспресс-проверка ООН
+// --- ПРОВЕРКА ГРУЗА ПО ООН (РАБОТАЮЩИЙ КАЛЬКУЛЯТОР) ---
 function initCargoChecker() {
   const input = document.getElementById('calcUnInput');
   const dropdown = document.getElementById('calcAutocomplete');
@@ -640,45 +958,46 @@ function initCargoChecker() {
     const matches = typeof searchDopogGoods === 'function' ? searchDopogGoods(val) : [];
     if (matches.length > 0) {
       dropdown.innerHTML = matches.map(m => `
-        <div class="autocomplete-item" data-un="${m.un}">
+        <div class="autocomplete-item" onclick="selectCargoUn('${m.un}')">
           <div><strong>ООН ${m.un}</strong>: ${escapeHtml(m.name_ru)}</div>
           <span class="un-pill ${m.is_hcdg_package ? 'hcdg' : ''}">Класс ${m.class}</span>
         </div>
       `).join('');
       dropdown.style.display = 'block';
-
-      dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
-        item.onclick = () => {
-          input.value = item.getAttribute('data-un');
-          dropdown.style.display = 'none';
-          runCargoCheck();
-        };
-      });
-    } else dropdown.style.display = 'none';
+    } else {
+      dropdown.style.display = 'none';
+    }
   });
 
-  document.querySelectorAll('.quick-un-link').forEach(l => {
-    l.onclick = () => {
-      input.value = l.getAttribute('data-un');
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      runCargoCheck();
+    }
+  });
+
+  document.querySelectorAll('.quick-un-link').forEach(link => {
+    link.onclick = () => {
+      input.value = link.getAttribute('data-un');
       runCargoCheck();
     };
   });
+}
 
-  document.getElementById('btnCreatePermitFromCalc').onclick = () => {
-    const un = input.value.trim();
-    switchTab('tab-permits');
-    openAddPermitModal();
-    if (un && !currentUnTags.includes(un)) {
-      currentUnTags.push(un);
-      setupTagInput('unTagsContainer', 'unTagInput', currentUnTags);
-    }
-  };
+function selectCargoUn(un) {
+  document.getElementById('calcUnInput').value = un;
+  document.getElementById('calcAutocomplete').style.display = 'none';
+  runCargoCheck();
 }
 
 function runCargoCheck() {
   const un = document.getElementById('calcUnInput').value.trim();
   const weight = parseFloat(document.getElementById('calcWeightInput').value) || null;
   if (!un) return showToast('Введите номер ООН', 'warning');
+
+  if (typeof evaluatePackageCargo !== 'function') {
+    return showToast('База ДОПОГ загружается...', 'warning');
+  }
 
   const res = evaluatePackageCargo(un, weight);
   document.getElementById('calcEmptyVerdict').style.display = 'none';
@@ -688,7 +1007,7 @@ function runCargoCheck() {
 
   document.getElementById('verdictTitle').innerHTML = `<span>${res.requires_permit ? '⛔' : '✅'}</span> ${res.status_text}`;
   document.getElementById('verdictGoodName').textContent = `ООН ${res.un} — ${res.name} (Класс ${res.class}, Группа упаковки: ${res.pg})`;
-  document.getElementById('verdictReason').innerHTML = `<strong>Основание ДОПОГ:</strong> ${escapeHtml(res.reason)}`;
+  document.getElementById('verdictReason').innerHTML = `<strong>Основание ДОПОГ (упаковки/бочки):</strong> ${escapeHtml(res.reason)}`;
   document.getElementById('verdictNote').innerHTML = `<strong>Памятка:</strong> ${escapeHtml(res.note)}`;
 }
 
@@ -699,10 +1018,41 @@ function resetCargoCheck() {
   document.getElementById('calcResultBox').style.display = 'none';
 }
 
-// Вспомогательные функции UI
-function switchTab(tabId) {
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === tabId));
-  document.querySelectorAll('.tab-content').forEach(c => c.style.display = c.id === tabId ? 'block' : 'none');
+function createRouteFromCalc() {
+  const un = document.getElementById('calcUnInput').value.trim();
+  switchTab('tab-routes');
+  openAddRouteModal();
+  if (un && !currentRouteUnTags.includes(un)) {
+    currentRouteUnTags.push(formatUnNumber(un));
+    setupTagInput('routeUnTagsContainer', 'routeUnTagInput', currentRouteUnTags, true);
+  }
+}
+
+// --- ФИЛЬТРЫ ДАШБОРДА ---
+function setRouteFilter(key) {
+  activeRouteFilter = (activeRouteFilter === key && key !== 'all') ? 'all' : key;
+  document.querySelectorAll('.filter-btn[data-rfilter]').forEach(b => b.classList.toggle('active', b.getAttribute('data-rfilter') === activeRouteFilter));
+  document.querySelectorAll('.stat-card[data-route-filter]').forEach(c => c.classList.toggle('active-filter', c.getAttribute('data-route-filter') === activeRouteFilter));
+  renderRoutes();
+}
+
+function setPermitFilter(key) {
+  activePermitFilter = (activePermitFilter === key && key !== 'all') ? 'all' : key;
+  document.querySelectorAll('.filter-btn[data-pfilter]').forEach(b => b.classList.toggle('active', b.getAttribute('data-pfilter') === activePermitFilter));
+  document.querySelectorAll('.stat-card[data-permit-filter]').forEach(c => c.classList.toggle('active-filter', c.getAttribute('data-permit-filter') === activePermitFilter));
+  renderPermits();
+}
+
+function setVehicleFilter(key) {
+  activeVehicleFilter = (activeVehicleFilter === key && key !== 'all') ? 'all' : key;
+  document.querySelectorAll('.stat-card[data-vehicle-filter]').forEach(c => c.classList.toggle('active-filter', c.getAttribute('data-vehicle-filter') === activeVehicleFilter));
+  renderVehicles();
+}
+
+// --- UI УТИЛИТЫ ---
+function switchTab(id) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === id));
+  document.querySelectorAll('.tab-content').forEach(c => c.style.display = c.id === id ? 'block' : 'none');
 }
 
 function openModal(id) { document.getElementById(id)?.classList.add('active'); }
@@ -713,68 +1063,144 @@ function showToast(msg, type = 'info') {
   if (!c) return;
   const t = document.createElement('div');
   t.className = 'toast';
-  t.innerHTML = `<span>${type === 'success' ? '✅' : (type === 'error' ? '❌' : 'ℹ️')}</span> <span>${escapeHtml(msg)}</span>`;
+  t.innerHTML = `<span>${type === 'success' ? '✅' : (type === 'error' ? '❌' : (type === 'warning' ? '⚠️' : 'ℹ️'))}</span> <span>${escapeHtml(msg)}</span>`;
   c.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3500);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3800);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function renderAll() {
+  renderRoutes();
   renderPermits();
   renderVehicles();
 }
 
-// Инициализация событий при загрузке DOM
+// --- ИНИЦИАЛИЗАЦИЯ И СЛУШАТЕЛИ ---
 document.addEventListener('DOMContentLoaded', async () => {
   await loadUserProfile();
   await loadServerData();
 
+  // Настройка 1С полей дат
+  document.querySelectorAll('.date-1c').forEach(input => {
+    input.addEventListener('blur', () => {
+      input.value = parseAndFormatDate1C(input.value);
+      input.dispatchEvent(new Event('change'));
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.value = parseAndFormatDate1C(input.value);
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+
+  // Авторасчет даты окончания СР (+1 год - 1 день)
+  document.getElementById('permitStartDate').addEventListener('change', (e) => {
+    const endDateInput = document.getElementById('permitEndDate');
+    if (e.target.value && (!endDateInput.value || document.getElementById('permitEditId').value === '')) {
+      endDateInput.value = calculateEndDate(e.target.value);
+    }
+  });
+
+  // Маска номера СР ХХ ХХХХХХ/э
+  document.getElementById('permitNumber').addEventListener('input', (e) => {
+    applyPermitNumberMask(e.target);
+  });
+
   // Поиск
+  document.getElementById('routeSearchInput')?.addEventListener('input', renderRoutes);
   document.getElementById('permitSearchInput')?.addEventListener('input', renderPermits);
   document.getElementById('vehicleSearchInput')?.addEventListener('input', renderVehicles);
 
-  // Сабмит формы СР
+  // Сабмит Маршрута
+  document.getElementById('routeForm').onsubmit = async (e) => {
+    e.preventDefault();
+    if (currentRouteUnTags.length === 0) return showToast('Укажите хотя бы один номер ООН', 'warning');
+    if (currentRouteLoadTags.length === 0) return showToast('Укажите пункт погрузки', 'warning');
+    if (currentRouteUnloadTags.length === 0) return showToast('Укажите пункт разгрузки', 'warning');
+
+    const editId = document.getElementById('routeEditId').value;
+    const body = {
+      routeNumber: document.getElementById('formRouteNumber').value,
+      name: document.getElementById('formRouteName').value,
+      unCodes: currentRouteUnTags,
+      pointsLoad: currentRouteLoadTags,
+      pointsUnload: currentRouteUnloadTags,
+      routeDetail: document.getElementById('formRouteDetail').value
+    };
+
+    const url = editId ? `/api/routes/${editId}` : '/api/routes';
+    const method = editId ? 'PUT' : 'POST';
+    const res = await apiRequest(url, { method, body: JSON.stringify(body) });
+
+    if (res && res.ok) {
+      showToast(editId ? 'Маршрут обновлен' : 'Новый Маршрут сохранен', 'success');
+      closeModal('routeModal');
+      await loadServerData();
+    }
+  };
+
+  // Сабмит Спецразрешения (СР)
   document.getElementById('permitForm').onsubmit = async (e) => {
     e.preventDefault();
-    if (currentUnTags.length === 0) return showToast('Укажите хотя бы один номер ООН', 'warning');
-    if (currentLoadTags.length === 0) return showToast('Укажите пункт погрузки', 'warning');
-    if (currentUnloadTags.length === 0) return showToast('Укажите пункт разгрузки', 'warning');
-
     const editId = document.getElementById('permitEditId').value;
-    const formData = new FormData();
-    formData.append('routeNumber', document.getElementById('permitRouteNumber').value);
-    formData.append('number', document.getElementById('permitNumber').value);
-    formData.append('startDate', document.getElementById('permitStartDate').value);
-    formData.append('endDate', document.getElementById('permitEndDate').value);
-    formData.append('vehicleId', document.getElementById('permitVehicleSelect').value);
-    formData.append('unCodes', JSON.stringify(currentUnTags));
-    formData.append('pointsLoad', JSON.stringify(currentLoadTags));
-    formData.append('pointsUnload', JSON.stringify(currentUnloadTags));
-    formData.append('routeDetail', document.getElementById('permitRouteDetail').value);
+    const start1C = document.getElementById('permitStartDate').value;
+    const end1C = document.getElementById('permitEndDate').value;
 
-    const fileInput = document.getElementById('permitFileInput');
-    if (fileInput.files.length > 0) formData.append('permitFile', fileInput.files[0]);
+    const startDateIso = date1CToIso(start1C);
+    const endDateIso = date1CToIso(end1C);
+
+    const formData = new FormData();
+    formData.append('routeId', document.getElementById('permitRouteSelect').value);
+    formData.append('vehicleId', document.getElementById('permitVehicleSelect').value);
+    formData.append('number', document.getElementById('permitNumber').value);
+    formData.append('startDate', startDateIso);
+    formData.append('endDate', endDateIso);
+
+    const filesInput = document.getElementById('permitFilesInput');
+    if (filesInput.files.length > 0) {
+      for (let i = 0; i < filesInput.files.length; i++) {
+        formData.append('permitFiles', filesInput.files[i]);
+      }
+    }
 
     const url = editId ? `/api/permits/${editId}` : '/api/permits';
     const method = editId ? 'PUT' : 'POST';
     const res = await apiRequest(url, { method, body: formData });
+
     if (res && res.ok) {
-      showToast(editId ? 'СР обновлено' : 'Новое СР сохранено', 'success');
+      showToast(editId ? 'СР обновлено' : 'Специальное разрешение выпущено!', 'success');
       closeModal('permitModal');
-      loadServerData();
+
+      // Мгновенная проверка на скорое окончание
+      const s = calculateStatus(endDateIso);
+      if (s.status === 'critical' || s.status === 'expired') {
+        triggerInstantAlert('Внимание: Срок СР', `Выпущено СР ${document.getElementById('permitNumber').value} со статусом: ${s.label}!`, 'error');
+      } else if (s.status === 'warning') {
+        triggerInstantAlert('Внимание: Срок СР', `Выпущено СР со сроком окончания менее 30 дней!`, 'warning');
+      }
+
+      await loadServerData();
     }
   };
 
-  // Сабмит формы ТС
+  // Сабмит Автомобиля
   document.getElementById('vehicleForm').onsubmit = async (e) => {
     e.preventDefault();
     const editId = document.getElementById('vehicleEditId').value;
+    const expiryIso = date1CToIso(document.getElementById('vehicleDopogExpiryDate').value);
+
     const formData = new FormData();
     formData.append('plate', document.getElementById('vehiclePlate').value);
     formData.append('brand', document.getElementById('vehicleBrand').value);
     formData.append('stsNumber', document.getElementById('vehicleStsNumber').value);
     formData.append('dopogNumber', document.getElementById('vehicleDopogNumber').value);
-    formData.append('dopogIssueDate', document.getElementById('vehicleDopogIssueDate').value);
-    formData.append('dopogExpiryDate', document.getElementById('vehicleDopogExpiryDate').value);
+    formData.append('dopogExpiryDate', expiryIso);
 
     const stsFile = document.getElementById('vehicleStsFile');
     const dopogFile = document.getElementById('vehicleDopogFile');
@@ -784,27 +1210,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     const url = editId ? `/api/vehicles/${editId}` : '/api/vehicles';
     const method = editId ? 'PUT' : 'POST';
     const res = await apiRequest(url, { method, body: formData });
+
     if (res && res.ok) {
-      showToast('Автомобиль сохранен', 'success');
+      showToast('Автомобиль сохранен в реестр', 'success');
       closeModal('vehicleModal');
-      loadServerData();
+
+      // Мгновенное оповещение о допуске авто
+      const s = calculateStatus(expiryIso);
+      if (s.status === 'critical' || s.status === 'expired') {
+        triggerInstantAlert('Внимание: Допуск авто ДОПОГ', `У автомобиля ${document.getElementById('vehiclePlate').value} допуск ДОПОГ: ${s.label}!`, 'error');
+      }
+
+      await loadServerData();
     }
   };
 
-  // Сабмит профиля консультанта
-  document.getElementById('consultantForm').onsubmit = async (e) => {
+  // Сабмит Профиля консультанта и компании
+  document.getElementById('profileForm').onsubmit = async (e) => {
     e.preventDefault();
+    const startIso = date1CToIso(document.getElementById('profCertStart').value);
+    const endIso = date1CToIso(document.getElementById('profCertEnd').value);
+
     const body = {
+      companyName: document.getElementById('profCompanyName').value,
+      companyInn: document.getElementById('profCompanyInn').value,
       fullName: document.getElementById('profFullName').value,
       consultantCertNumber: document.getElementById('profCertNum').value,
-      consultantCertStart: document.getElementById('profCertStart').value,
-      consultantCertEnd: document.getElementById('profCertEnd').value
+      consultantCertStart: startIso,
+      consultantCertEnd: endIso
     };
+
     const res = await apiRequest('/api/auth/profile', { method: 'PUT', body: JSON.stringify(body) });
     if (res && res.ok) {
-      showToast('Профиль консультанта сохранен', 'success');
-      closeModal('consultantModal');
-      loadUserProfile();
+      showToast('Данные профиля и организации сохранены', 'success');
+      closeModal('profileModal');
+      await loadUserProfile();
+
+      if (endIso) {
+        const s = calculateStatus(endIso);
+        if (s.status === 'critical' || s.status === 'expired') {
+          triggerInstantAlert('Свидетельство консультанта ДОПОГ', `Срок действия свидетельства консультанта: ${s.label}!`, 'warning');
+        }
+      }
     }
   };
 
