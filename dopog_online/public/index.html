@@ -411,6 +411,21 @@
     </div>
   </div>
 
+  <!-- МОДАЛЬНОЕ ОКНО: ДЕТАЛЬНЫЙ ПРОСМОТР СПЕЦРАЗРЕШЕНИЯ (КАРТОЧКА СР) -->
+  <div class="modal-overlay" id="permitDetailModal">
+    <div class="modal-card" style="max-width: 780px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="permitDetailTitle">Специальное разрешение</h3>
+        <button class="modal-close-btn" onclick="closeModal('permitDetailModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="permitDetailBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('permitDetailModal')">Закрыть</button>
+        <button type="button" class="btn btn-primary" id="btnEditPermitFromDetail">Редактировать СР</button>
+      </div>
+    </div>
+  </div>
+
   <!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ/РЕДАКТИРОВАТЬ СР (ПРИВЯЗКА К МАРШРУТУ И АВТО) -->
   <div class="modal-overlay" id="permitModal">
     <div class="modal-card" style="max-width: 650px;">

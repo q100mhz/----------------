@@ -45,6 +45,17 @@ function logoutUser() {
   window.location.href = '/login.html';
 }
 
+// --- УНИВЕРСАЛЬНЫЙ ОБРАБОТЧИК КЛИКА ПО СТРОКЕ (ОТКРЫТИЕ КАРТОЧКИ) ---
+function handleRowClick(event, type, id) {
+  // Игнорируем клик, если нажали по кнопке, ссылке, инпуту или элементу копирования/скачивания
+  if (event.target.closest('button, a, input, select, textarea, .file-chip, .route-copy-btn, .tag-remove')) {
+    return;
+  }
+  if (type === 'route') openRouteDetailModal(id);
+  if (type === 'permit') openPermitDetailModal(id);
+  if (type === 'vehicle') openVehicleCard(id);
+}
+
 // --- ЛОГИКА ВВОДА ДАТ ПО ПРИНЦИПУ 1С ---
 function parseAndFormatDate1C(inputStr) {
   if (!inputStr) return '';
@@ -81,7 +92,6 @@ function parseAndFormatDate1C(inputStr) {
   return `${d}.${m}.${y}`;
 }
 
-// Преобразование даты ДД.ММ.ГГГГ в формат ISO ГГГГ-ММ-ДД для хранения
 function date1CToIso(str) {
   if (!str) return '';
   if (str.includes('-')) return str;
@@ -92,7 +102,6 @@ function date1CToIso(str) {
   return str;
 }
 
-// Преобразование ISO ГГГГ-ММ-ДД в ДД.ММ.ГГГГ для отображения
 function isoToDate1C(iso) {
   if (!iso) return '';
   if (iso.includes('.')) return iso;
@@ -103,7 +112,6 @@ function isoToDate1C(iso) {
   return iso;
 }
 
-// Синхронизация выбора из календарика
 function syncDateFromPicker(pickerInput, textInputId) {
   if (pickerInput.value) {
     const [y, m, d] = pickerInput.value.split('-');
@@ -113,7 +121,7 @@ function syncDateFromPicker(pickerInput, textInputId) {
   }
 }
 
-// Авторасчет даты окончания: +1 год - 1 день
+// Авторасчет даты окончания СР: +1 год - 1 день
 function calculateEndDate(start1CStr) {
   const iso = date1CToIso(start1CStr);
   if (!iso || !iso.includes('-')) return '';
@@ -340,11 +348,11 @@ function renderRoutes() {
     const permitsLabel = permitsCount > 0 ? `<span class="brand-badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;">${permitsCount} СР привязано</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Нет СР</span>';
 
     return `
-      <tr>
+      <tr class="clickable-row" onclick="handleRowClick(event, 'route', '${r.id}')" title="Нажмите для просмотра карточки маршрута">
         <td><span class="status-badge ${s.cssClass}">${s.label}</span></td>
         <td><strong style="font-size:1.05rem;color:var(--primary);">№ ${r.route_number}</strong></td>
         <td>
-          <a href="javascript:void(0)" onclick="openRouteDetailModal('${r.id}')" style="font-weight:700;color:var(--text-main);text-decoration:underline;">
+          <a href="javascript:void(0)" onclick="event.stopPropagation(); openRouteDetailModal('${r.id}')" class="entity-link">
             ${escapeHtml(r.name)}
           </a>
         </td>
@@ -354,13 +362,13 @@ function renderRoutes() {
         <td>
           ${permitsLabel}
           <div style="margin-top:4px;">
-            <button class="btn btn-secondary btn-sm" onclick="openAddPermitForRoute('${r.id}')" style="font-size:0.74rem;">+ Выпустить СР</button>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openAddPermitForRoute('${r.id}')" style="font-size:0.74rem;">+ Выпустить СР</button>
           </div>
         </td>
         <td style="text-align:right;white-space:nowrap;">
-          <button class="btn btn-secondary btn-sm" onclick="openRouteDetailModal('${r.id}')" title="Карточка маршрута и пакет документов">📋 Маршрут</button>
-          <button class="btn btn-secondary btn-sm" onclick="editRoute('${r.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteRoute('${r.id}')">🗑️</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openRouteDetailModal('${r.id}')" title="Карточка маршрута и пакет документов">📋 Маршрут</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editRoute('${r.id}')">✏️️</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoute('${r.id}')">🗑️</button>
         </td>
       </tr>
     `;
@@ -399,10 +407,14 @@ function openRouteDetailModal(routeId) {
             const files = p.files || [];
             const filesHtml = files.map(f => `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(f.path)}" target="_blank" download="${escapeHtml(f.name)}">📄 ${escapeHtml(f.name)}</a>`).join(' ');
             return `
-              <tr>
+              <tr class="clickable-row" onclick="closeModal('routeDetailModal'); openPermitDetailModal('${p.id}')" title="Открыть карточку СР">
                 <td><span class="status-badge ${pStat.cssClass}">${pStat.label}</span></td>
-                <td><strong>${escapeHtml(p.number)}</strong></td>
-                <td>${escapeHtml(p.plate)} (${escapeHtml(p.brand)})</td>
+                <td><strong class="entity-link">${escapeHtml(p.number)} ➔</strong></td>
+                <td>
+                  <a href="javascript:void(0)" onclick="event.stopPropagation(); closeModal('routeDetailModal'); openVehicleCard('${p.vehicle_id}')" class="entity-link">
+                    ${escapeHtml(p.plate)} (${escapeHtml(p.brand)}) ➔
+                  </a>
+                </td>
                 <td>до ${isoToDate1C(p.end_date)}</td>
                 <td>${filesHtml || '—'}</td>
               </tr>
@@ -453,7 +465,75 @@ function openRouteDetailModal(routeId) {
   openModal('routeDetailModal');
 }
 
-// Копирование маршрута
+// Карточка СР (детальный просмотр с ссылкой на авто и маршрут)
+function openPermitDetailModal(permitId) {
+  const p = appData.permits.find(item => item.id === permitId);
+  if (!p) return;
+
+  const s = calculateStatus(p.end_date);
+  document.getElementById('permitDetailTitle').textContent = `Специальное разрешение № ${p.number}`;
+
+  const files = p.files || [];
+  const filesHtml = files.length > 0
+    ? files.map(f => `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(f.path)}" target="_blank" download="${escapeHtml(f.name)}">📄 ${escapeHtml(f.name)}</a>`).join(' ')
+    : '<span style="color:var(--text-muted);font-size:0.85rem;">Сканы не загружены</span>';
+
+  document.getElementById('permitDetailBody').innerHTML = `
+    <div style="background:var(--bg-main);padding:1.25rem;border-radius:8px;border:1px solid var(--border-color);margin-bottom:1.25rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span class="status-badge ${s.cssClass}">${s.label}</span>
+        <button class="btn btn-secondary btn-sm" onclick="copyPermitRoute('${p.id}')">📋 Скопировать маршрут</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:12px;">
+        <div>
+          <span style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;">Маршрут согласования:</span><br>
+          <a href="javascript:void(0)" onclick="closeModal('permitDetailModal'); openRouteDetailModal('${p.route_id}')" class="entity-link" style="font-size:1.05rem;">
+            Маршрут № ${p.routeNumber}: ${escapeHtml(p.routeName || '')} ➔
+          </a>
+        </div>
+        <div>
+          <span style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;">Закрепленный автомобиль:</span><br>
+          <a href="javascript:void(0)" onclick="closeModal('permitDetailModal'); openVehicleCard('${p.vehicle_id}')" class="entity-link" style="font-size:1.05rem;">
+            🚗 ${escapeHtml(p.plate)} (${escapeHtml(p.brand)}) ➔
+          </a>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px;">
+        <strong>Срок действия:</strong> с ${isoToDate1C(p.start_date)} по <strong>${isoToDate1C(p.end_date)}</strong>
+      </div>
+      <div style="margin-bottom:8px;">
+        <strong>Разрешенные грузы ООН:</strong> ${(p.unCodes || []).map(u => `<span class="un-pill">ООН ${escapeHtml(u)}</span>`).join('')}
+      </div>
+      <div style="margin-bottom:8px;">
+        <strong>Грузоотправители (погрузка):</strong> ${(p.pointsLoad || []).map(l => `<span class="route-badge badge-load">🟢 ${escapeHtml(l)}</span>`).join(' ')}
+      </div>
+      <div style="margin-bottom:8px;">
+        <strong>Грузополучатели (разгрузка):</strong> ${(p.pointsUnload || []).map(u => `<span class="route-badge badge-unload">🔵 ${escapeHtml(u)}</span>`).join(' ')}
+      </div>
+      <div>
+        <strong>Детализация нитки маршрута:</strong> ${escapeHtml(p.route_detail || 'Не детализирована')}
+      </div>
+    </div>
+
+    <div>
+      <h4 style="font-weight:700;margin-bottom:6px;">Прикрепленные сканы спецразрешения (${files.length})</h4>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${filesHtml}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btnEditPermitFromDetail').onclick = () => {
+    closeModal('permitDetailModal');
+    editPermit(p.id);
+  };
+
+  openModal('permitDetailModal');
+}
+
+// Надежное копирование маршрута
 function copyPlainRoute(routeId) {
   const r = appData.routes.find(item => item.id === routeId);
   if (!r) return;
@@ -464,7 +544,7 @@ function copyPlainRoute(routeId) {
 function copyPermitRoute(permitId) {
   const p = appData.permits.find(item => item.id === permitId);
   if (!p) return;
-  const text = `Маршрут № ${p.routeNumber} (${p.number}): ${(p.pointsLoad || []).join('; ')} -> ${(p.pointsUnload || []).join('; ')}. ${p.routeDetail || ''}`;
+  const text = `Маршрут № ${p.routeNumber} (${p.number}): ${(p.pointsLoad || []).join('; ')} -> ${(p.pointsUnload || []).join('; ')}. ${p.route_detail || ''}`;
   copyTextToClipboard(text);
 }
 
@@ -568,13 +648,21 @@ function renderPermits() {
       : '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
 
     return `
-      <tr>
+      <tr class="clickable-row" onclick="handleRowClick(event, 'permit', '${p.id}')" title="Нажмите для просмотра карточки СР">
         <td><strong style="color:var(--primary);font-size:1.05rem;">№ ${p.routeNumber}</strong></td>
         <td><strong>${escapeHtml(p.number)}</strong><br><small style="color:var(--text-muted);">выдано: ${isoToDate1C(p.start_date)}</small></td>
-        <td><strong>${escapeHtml(p.plate)}</strong><br><small style="color:var(--text-muted);">${escapeHtml(p.brand)}</small></td>
         <td>
-          <div style="font-weight:600;font-size:0.85rem;">${escapeHtml(p.routeName || 'Маршрут')}</div>
-          <button class="route-copy-btn" onclick="copyPermitRoute('${p.id}')">📋 Скопировать маршрут</button>
+          <a href="javascript:void(0)" onclick="event.stopPropagation(); openVehicleCard('${p.vehicle_id}')" class="entity-link" title="Перейти в карточку автомобиля">
+            ${escapeHtml(p.plate)} ➔
+          </a>
+          <br><small style="color:var(--text-muted);">${escapeHtml(p.brand)}</small>
+        </td>
+        <td>
+          <a href="javascript:void(0)" onclick="event.stopPropagation(); openRouteDetailModal('${p.route_id}')" class="entity-link" style="font-weight:600;font-size:0.85rem;" title="Перейти к маршруту">
+            ${escapeHtml(p.routeName || 'Маршрут')} ➔
+          </a>
+          <br>
+          <button class="route-copy-btn" onclick="event.stopPropagation(); copyPermitRoute('${p.id}')">📋 Скопировать маршрут</button>
         </td>
         <td>
           <span class="status-badge ${s.cssClass}">${s.label}</span>
@@ -582,8 +670,9 @@ function renderPermits() {
         </td>
         <td style="max-width:200px;">${filesHtml}</td>
         <td style="text-align:right;white-space:nowrap;">
-          <button class="btn btn-secondary btn-sm" onclick="editPermit('${p.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deletePermit('${p.id}')">🗑️</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openPermitDetailModal('${p.id}')" title="Карточка СР">📋 Карточка</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editPermit('${p.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deletePermit('${p.id}')">🗑️</button>
         </td>
       </tr>
     `;
@@ -644,9 +733,9 @@ function renderVehicles() {
     }
 
     return `
-      <tr>
+      <tr class="clickable-row" onclick="handleRowClick(event, 'vehicle', '${v.id}')" title="Нажмите для просмотра карточки автомобиля">
         <td style="min-width:150px;white-space:nowrap;">
-          <a href="javascript:void(0)" onclick="openVehicleCard('${v.id}')" style="font-weight:700;color:var(--primary);text-decoration:underline;font-size:1rem;">
+          <a href="javascript:void(0)" onclick="event.stopPropagation(); openVehicleCard('${v.id}')" class="entity-link" style="font-size:1rem;">
             ${escapeHtml(v.plate)}
           </a>
         </td>
@@ -659,16 +748,16 @@ function renderVehicles() {
         </td>
         <td><span class="brand-badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;">${activePermitsCount} СР</span></td>
         <td style="text-align:right;white-space:nowrap;">
-          <button class="btn btn-secondary btn-sm" onclick="openVehicleCard('${v.id}')">📋 Документы авто</button>
-          <button class="btn btn-secondary btn-sm" onclick="editVehicle('${v.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteVehicle('${v.id}')">🗑️</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openVehicleCard('${v.id}')">📋 Документы авто</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editVehicle('${v.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteVehicle('${v.id}')">🗑️</button>
         </td>
       </tr>
     `;
   }).join('');
 }
 
-// Карточка автомобиля
+// Карточка автомобиля (таблица: слева СТС, справа ДОПОГ + переход в СР)
 function openVehicleCard(id) {
   const v = appData.vehicles.find(item => item.id === id);
   if (!v) return;
@@ -679,6 +768,7 @@ function openVehicleCard(id) {
   document.getElementById('vehicleDetailTitle').textContent = `Автомобиль: ${v.plate} — ${v.brand}`;
   document.getElementById('vehicleDetailBody').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;background:var(--bg-main);padding:1.25rem;border-radius:8px;border:1px solid var(--border-color);margin-bottom:1.5rem;">
+      <!-- Слева: СТС -->
       <div>
         <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Документ СТС</h4>
         <div style="font-size:1.15rem;font-weight:700;margin-bottom:4px;">${escapeHtml(v.plate)}</div>
@@ -689,6 +779,7 @@ function openVehicleCard(id) {
         </div>
       </div>
 
+      <!-- Справа: Допуск ДОПОГ -->
       <div>
         <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Свидетельство о допуске ДОПОГ</h4>
         <div style="font-weight:700;margin-bottom:4px;">${escapeHtml(v.dopog_number || 'Номер не указан')}</div>
@@ -708,10 +799,10 @@ function openVehicleCard(id) {
           ${linked.length === 0 ? '<tr><td colspan="5" style="text-align:center;padding:1rem;color:var(--text-muted);">Спецразрешений не привязано</td></tr>' : linked.map(p => {
             const pStat = calculateStatus(p.end_date);
             return `
-              <tr>
+              <tr class="clickable-row" onclick="closeModal('vehicleDetailModal'); openPermitDetailModal('${p.id}')" title="Нажмите, чтобы открыть карточку СР">
                 <td><span class="status-badge ${pStat.cssClass}">${pStat.label}</span></td>
                 <td><strong>№ ${p.routeNumber}</strong></td>
-                <td>${escapeHtml(p.number)}</td>
+                <td><strong class="entity-link">${escapeHtml(p.number)} ➔</strong></td>
                 <td>${escapeHtml(p.routeName || 'Маршрут')}</td>
                 <td>до ${isoToDate1C(p.end_date)}</td>
               </tr>
@@ -932,7 +1023,7 @@ function openProfileModal() {
   openModal('profileModal');
 }
 
-// --- ПРОВЕРКА ГРУЗА ПО ООН (РАБОТАЮЩИЙ КАЛЬКУЛЯТОР) ---
+// --- ПРОВЕРКА ГРУЗА ПО ООН (С ПОДДЕРЖКОЙ ЦИСТЕРН И УПАКОВОК) ---
 function initCargoChecker() {
   const input = document.getElementById('calcUnInput');
   const dropdown = document.getElementById('calcAutocomplete');

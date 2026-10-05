@@ -84,7 +84,27 @@ th { background: #f8fafc; color: var(--text-muted); font-weight: 700; padding: 0
 th.sortable-th { cursor: pointer; user-select: none; }
 th.sortable-th:hover { color: var(--primary); }
 td { padding: 0.95rem 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
-tbody tr:hover { background: #f8fafc; }
+
+/* Кликабельные строки таблиц */
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.clickable-row:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Ссылки между сущностями (Авто <-> СР <-> Маршрут) */
+.entity-link {
+  color: var(--primary);
+  text-decoration: underline;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-block;
+}
+.entity-link:hover {
+  color: var(--primary-hover);
+}
 
 .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
 .status-badge.active-green { background: var(--status-green-bg); color: #065f46; border: 1px solid #a7f3d0; }
@@ -101,7 +121,7 @@ tbody tr:hover { background: #f8fafc; }
 .route-copy-btn { background: transparent; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 0.72rem; color: var(--text-muted); cursor: pointer; margin-top: 4px; }
 .file-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; color: var(--primary); text-decoration: none; margin: 2px; }
 
-/* 1C Дата и компактный Datepicker */
+/* 1C Дата и Datepicker */
 .date-1c-wrapper { position: relative; }
 .date-input-group { display: flex; align-items: center; gap: 6px; position: relative; }
 .date-input-group .form-input { flex: 1; }
@@ -141,45 +161,3 @@ tbody tr:hover { background: #f8fafc; }
 .autocomplete-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto; z-index: 50; }
 .autocomplete-item { padding: 8px 12px; font-size: 0.84rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
 .autocomplete-item:hover { background: #eff6ff; }
-
-/* ==========================================================================
-   СТИЛИ ПЕЧАТНОЙ ФОРМЫ "ПАМЯТКА ВОДИТЕЛЮ" (@media print)
-   ========================================================================== */
-.printable-memo-sheet {
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 1.25rem;
-  margin-top: 1rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-@media print {
-  body * {
-    visibility: hidden;
-  }
-
-  #printableDriverMemo, #printableDriverMemo * {
-    visibility: visible;
-  }
-
-  #printableDriverMemo {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 20px;
-    border: none;
-    box-shadow: none;
-    color: #000;
-    background: #fff;
-    font-size: 11pt;
-    line-height: 1.35;
-  }
-
-  a {
-    text-decoration: none;
-    color: #000;
-  }
-}
