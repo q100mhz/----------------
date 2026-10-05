@@ -21,9 +21,6 @@ let activeVehicleFilter = 'all';
 let permitSortField = 'routeNumber';
 let permitSortAsc = true;
 
-// Текущий проверенный груз для памятки водителю
-let currentEvaluatedCargo = null;
-
 if (!authToken) window.location.href = '/login.html';
 
 // Обертка для API-запросов
@@ -84,6 +81,7 @@ function parseAndFormatDate1C(inputStr) {
   return `${d}.${m}.${y}`;
 }
 
+// Преобразование даты ДД.ММ.ГГГГ в формат ISO ГГГГ-ММ-ДД для хранения
 function date1CToIso(str) {
   if (!str) return '';
   if (str.includes('-')) return str;
@@ -94,6 +92,7 @@ function date1CToIso(str) {
   return str;
 }
 
+// Преобразование ISO ГГГГ-ММ-ДД в ДД.ММ.ГГГГ для отображения
 function isoToDate1C(iso) {
   if (!iso) return '';
   if (iso.includes('.')) return iso;
@@ -104,6 +103,7 @@ function isoToDate1C(iso) {
   return iso;
 }
 
+// Синхронизация выбора из календарика
 function syncDateFromPicker(pickerInput, textInputId) {
   if (pickerInput.value) {
     const [y, m, d] = pickerInput.value.split('-');
@@ -113,6 +113,7 @@ function syncDateFromPicker(pickerInput, textInputId) {
   }
 }
 
+// Авторасчет даты окончания: +1 год - 1 день
 function calculateEndDate(start1CStr) {
   const iso = date1CToIso(start1CStr);
   if (!iso || !iso.includes('-')) return '';
@@ -366,6 +367,7 @@ function renderRoutes() {
   }).join('');
 }
 
+// Карточка маршрута (детальный просмотр + пакет документов + список СР)
 function openRouteDetailModal(routeId) {
   const r = appData.routes.find(item => item.id === routeId);
   if (!r) return;
@@ -424,7 +426,7 @@ function openRouteDetailModal(routeId) {
       <div><strong>Нитка маршрута:</strong> ${escapeHtml(r.route_detail || 'Не детализирована')}</div>
     </div>
 
-    <!-- Задел под итерацию 3 -->
+    <!-- Раздел: Пакет документов (внутри карточки маршрута) -->
     <div style="background:#eff6ff;padding:1.25rem;border-radius:8px;border:1px solid #bfdbfe;margin-bottom:1.5rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
@@ -451,6 +453,7 @@ function openRouteDetailModal(routeId) {
   openModal('routeDetailModal');
 }
 
+// Копирование маршрута
 function copyPlainRoute(routeId) {
   const r = appData.routes.find(item => item.id === routeId);
   if (!r) return;
@@ -461,7 +464,7 @@ function copyPlainRoute(routeId) {
 function copyPermitRoute(permitId) {
   const p = appData.permits.find(item => item.id === permitId);
   if (!p) return;
-  const text = `Маршрут № ${p.routeNumber} (${p.number}): ${(p.pointsLoad || []).join('; ')} -> ${(p.pointsUnload || []).join('; ')}. ${p.route_detail || ''}`;
+  const text = `Маршрут № ${p.routeNumber} (${p.number}): ${(p.pointsLoad || []).join('; ')} -> ${(p.pointsUnload || []).join('; ')}. ${p.routeDetail || ''}`;
   copyTextToClipboard(text);
 }
 
@@ -531,6 +534,7 @@ function renderPermits() {
     return true;
   });
 
+  // Ранжирование
   filtered.sort((a, b) => {
     let valA = a[permitSortField];
     let valB = b[permitSortField];
@@ -664,6 +668,7 @@ function renderVehicles() {
   }).join('');
 }
 
+// Карточка автомобиля
 function openVehicleCard(id) {
   const v = appData.vehicles.find(item => item.id === id);
   if (!v) return;
@@ -802,7 +807,7 @@ async function deleteRoute(id) {
   }
 }
 
-// --- УПРАВЛЕНИЕ СПЕЦРАЗРЕШЕНИЯМИ ---
+// --- УПРАВЛЕНИЕ СПЕЦРАЗРЕШЕНИЯМИ (СР) ---
 function populatePermitModalSelects(selectedRouteId = '', selectedVehicleId = '') {
   const rSel = document.getElementById('permitRouteSelect');
   const vSel = document.getElementById('permitVehicleSelect');
@@ -927,7 +932,7 @@ function openProfileModal() {
   openModal('profileModal');
 }
 
-// --- ПРОВЕРКА ГРУЗА ПО ООН И ПАМЯТКА ВОДИТЕЛЮ ---
+// --- ПРОВЕРКА ГРУЗА ПО ООН (РАБОТАЮЩИЙ КАЛЬКУЛЯТОР) ---
 function initCargoChecker() {
   const input = document.getElementById('calcUnInput');
   const dropdown = document.getElementById('calcAutocomplete');
@@ -942,7 +947,7 @@ function initCargoChecker() {
       dropdown.innerHTML = matches.map(m => `
         <div class="autocomplete-item" onclick="selectCargoUn('${m.un}')">
           <div><strong>ООН ${m.un}</strong>: ${escapeHtml(m.name_ru)}</div>
-          <span class="un-pill ${m.is_hcdg ? 'hcdg' : ''}">Класс ${m.class}</span>
+          <span class="un-pill ${m.is_hcdg_package ? 'hcdg' : ''}">Класс ${m.class}</span>
         </div>
       `).join('');
       dropdown.style.display = 'block';
@@ -975,40 +980,24 @@ function selectCargoUn(un) {
 function runCargoCheck() {
   const un = document.getElementById('calcUnInput').value.trim();
   const weight = parseFloat(document.getElementById('calcWeightInput').value) || null;
+  const packageType = document.getElementById('calcPackageType') ? document.getElementById('calcPackageType').value : 'drums';
+
   if (!un) return showToast('Введите номер ООН', 'warning');
 
   if (typeof evaluatePackageCargo !== 'function') {
     return showToast('База ДОПОГ загружается...', 'warning');
   }
 
-  const res = evaluatePackageCargo(un, weight);
-  currentEvaluatedCargo = res;
-
+  const res = evaluatePackageCargo(un, weight, packageType);
   document.getElementById('calcEmptyVerdict').style.display = 'none';
   const box = document.getElementById('calcResultBox');
   box.style.display = 'block';
   box.className = 'verdict-box ' + (res.badge_type === 'danger' ? 'danger' : (res.badge_type === 'warning' ? 'warning' : 'success'));
 
   document.getElementById('verdictTitle').innerHTML = `<span>${res.requires_permit ? '⛔' : '✅'}</span> ${res.status_text}`;
-  document.getElementById('verdictGoodName').textContent = `ООН ${res.un} — ${res.name} (Класс: ${res.class}, ГУ: ${res.pg || '-'})`;
-  document.getElementById('verdictReason').innerHTML = `<strong>Основание ДОПОГ (упаковки/бочки):</strong> ${escapeHtml(res.reason)}`;
+  document.getElementById('verdictGoodName').textContent = `ООН ${res.un} — ${res.name} (Класс ${res.class}, Группа упаковки: ${res.pg})`;
+  document.getElementById('verdictReason').innerHTML = `<strong>Основание ДОПОГ:</strong> ${escapeHtml(res.reason)}`;
   document.getElementById('verdictNote').innerHTML = `<strong>Памятка:</strong> ${escapeHtml(res.note)}`;
-
-  // Отображаем блок записи для накладной и памятки водителю
-  const memoContainer = document.getElementById('driverMemoContainer');
-  memoContainer.style.display = 'block';
-
-  document.getElementById('consignmentStringBox').textContent = res.consignmentText;
-  document.getElementById('memoEntryText').textContent = res.consignmentText;
-  document.getElementById('memoPermitStatus').innerHTML = res.requires_permit 
-    ? '<span style="color:#b91c1c;">ОГПО — ТРЕБУЕТСЯ СПЕЦРАЗРЕШЕНИЕ РОСТРАНСНАДЗОРА</span>' 
-    : '<span style="color:#15803d;">СТАНДАРТНЫЙ ДОПОГ (Спецразрешение не требуется)</span>';
-  document.getElementById('memoTunnelCode').textContent = res.tunnel || 'Без ограничений (E)';
-
-  document.getElementById('memoMarkingText').innerHTML = `
-    Упаковки/бочки должны иметь маркировку <strong>UN ${res.un}</strong> и знаки опасности <strong>№ ${(res.labels || [res.class]).join(', ')}</strong>. 
-    Транспортное средство маркируется нейтральными оранжевыми табличками спереди и сзади.
-  `;
 }
 
 function resetCargoCheck() {
@@ -1016,8 +1005,6 @@ function resetCargoCheck() {
   document.getElementById('calcWeightInput').value = '';
   document.getElementById('calcEmptyVerdict').style.display = 'block';
   document.getElementById('calcResultBox').style.display = 'none';
-  document.getElementById('driverMemoContainer').style.display = 'none';
-  currentEvaluatedCargo = null;
 }
 
 function createRouteFromCalc() {
@@ -1028,18 +1015,6 @@ function createRouteFromCalc() {
     currentRouteUnTags.push(formatUnNumber(un));
     setupTagInput('routeUnTagsContainer', 'routeUnTagInput', currentRouteUnTags, true);
   }
-}
-
-function copyConsignmentEntry() {
-  if (!currentEvaluatedCargo || !currentEvaluatedCargo.consignmentText) return;
-  copyTextToClipboard(currentEvaluatedCargo.consignmentText);
-}
-
-function printDriverMemo() {
-  if (!currentEvaluatedCargo) {
-    return showToast('Сначала выполните проверку груза', 'warning');
-  }
-  window.print();
 }
 
 // --- ФИЛЬТРЫ ДАШБОРДА ---
@@ -1063,7 +1038,7 @@ function setVehicleFilter(key) {
   renderVehicles();
 }
 
-// --- ВСПОМОГАТЕЛЬНЫЙ UI ---
+// --- UI УТИЛИТЫ ---
 function switchTab(id) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === id));
   document.querySelectorAll('.tab-content').forEach(c => c.style.display = c.id === id ? 'block' : 'none');
@@ -1093,12 +1068,12 @@ function renderAll() {
   renderVehicles();
 }
 
-// --- СЛУШАТЕЛИ И ИНИЦИАЛИЗАЦИЯ ---
+// --- ИНИЦИАЛИЗАЦИЯ И СЛУШАТЕЛИ ---
 document.addEventListener('DOMContentLoaded', async () => {
   await loadUserProfile();
   await loadServerData();
 
-  // Настройка полей дат в стиле 1С
+  // Настройка 1С полей дат
   document.querySelectorAll('.date-1c').forEach(input => {
     input.addEventListener('blur', () => {
       input.value = parseAndFormatDate1C(input.value);
@@ -1113,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Авторасчет срока окончания СР (+1 год - 1 день)
+  // Авторасчет даты окончания СР (+1 год - 1 день)
   document.getElementById('permitStartDate').addEventListener('change', (e) => {
     const endDateInput = document.getElementById('permitEndDate');
     if (e.target.value && (!endDateInput.value || document.getElementById('permitEditId').value === '')) {
@@ -1131,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('permitSearchInput')?.addEventListener('input', renderPermits);
   document.getElementById('vehicleSearchInput')?.addEventListener('input', renderVehicles);
 
-  // Форма Маршрута
+  // Сабмит Маршрута
   document.getElementById('routeForm').onsubmit = async (e) => {
     e.preventDefault();
     if (currentRouteUnTags.length === 0) return showToast('Укажите хотя бы один номер ООН', 'warning');
@@ -1159,7 +1134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Форма СР
+  // Сабмит Спецразрешения (СР)
   document.getElementById('permitForm').onsubmit = async (e) => {
     e.preventDefault();
     const editId = document.getElementById('permitEditId').value;
@@ -1193,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const s = calculateStatus(endDateIso);
       if (s.status === 'critical' || s.status === 'expired') {
-        triggerInstantAlert('Внимание: Срок СР', `Выпущено СР ${document.getElementById('permitNumber').value}: ${s.label}!`, 'error');
+        triggerInstantAlert('Внимание: Срок СР', `Выпущено СР ${document.getElementById('permitNumber').value} со статусом: ${s.label}!`, 'error');
       } else if (s.status === 'warning') {
         triggerInstantAlert('Внимание: Срок СР', `Выпущено СР со сроком окончания менее 30 дней!`, 'warning');
       }
@@ -1202,7 +1177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Форма ТС
+  // Сабмит Автомобиля
   document.getElementById('vehicleForm').onsubmit = async (e) => {
     e.preventDefault();
     const editId = document.getElementById('vehicleEditId').value;
@@ -1230,14 +1205,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const s = calculateStatus(expiryIso);
       if (s.status === 'critical' || s.status === 'expired') {
-        triggerInstantAlert('Внимание: Допуск авто ДОПОГ', `У авто ${document.getElementById('vehiclePlate').value} допуск: ${s.label}!`, 'error');
+        triggerInstantAlert('Внимание: Допуск авто ДОПОГ', `У автомобиля ${document.getElementById('vehiclePlate').value} допуск ДОПОГ: ${s.label}!`, 'error');
       }
 
       await loadServerData();
     }
   };
 
-  // Форма Профиля
+  // Сабмит Профиля консультанта и компании
   document.getElementById('profileForm').onsubmit = async (e) => {
     e.preventDefault();
     const startIso = date1CToIso(document.getElementById('profCertStart').value);
@@ -1257,6 +1232,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       showToast('Данные профиля и организации сохранены', 'success');
       closeModal('profileModal');
       await loadUserProfile();
+
+      if (endIso) {
+        const s = calculateStatus(endIso);
+        if (s.status === 'critical' || s.status === 'expired') {
+          triggerInstantAlert('Свидетельство консультанта ДОПОГ', `Срок действия свидетельства консультанта: ${s.label}!`, 'warning');
+        }
+      }
     }
   };
 

@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- Верхняя панель сервиса -->
+  <!-- Верхняя панель -->
   <header class="app-header">
     <div class="brand-wrapper">
       <div class="brand-icon">⚠</div>
@@ -18,13 +18,13 @@
       </div>
     </div>
 
-    <!-- Профиль ответственного консультанта и организации -->
+    <!-- Профиль консультанта и компании -->
     <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" id="btnEnablePush" onclick="requestPushPermission()" title="Включить браузерные Push-оповещения">
+      <button class="btn btn-secondary btn-sm" id="btnEnablePush" onclick="requestPushPermission()" title="Включить звуковые и Push-оповещения">
         🔔 Оповещения
       </button>
 
-      <div class="user-profile-badge" onclick="openProfileModal()" title="Нажмите для просмотра/редактирования данных организации и консультанта">
+      <div class="user-profile-badge" onclick="openProfileModal()" title="Нажмите для просмотра карточки организации и консультанта">
         <span class="user-avatar" id="userAvatar">К</span>
         <div>
           <div style="font-weight: 700; line-height: 1.2;" id="userFullName">Консультант ДОПОГ</div>
@@ -51,7 +51,7 @@
         <span class="tab-badge" id="permitsCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-vehicles" onclick="switchTab('tab-vehicles')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
         Автопарк и Допуски ДОПОГ
         <span class="tab-badge" id="vehiclesCountBadge">0</span>
       </button>
@@ -62,10 +62,10 @@
     </div>
   </nav>
 
-  <!-- Основной контейнер -->
+  <!-- Контент -->
   <main class="app-container">
 
-    <!-- ВКЛАДКА 1: РЕЕСТР МАРШРУТОВ -->
+    <!-- ВКЛАДКА 1: РЕЕСТР МАРШРУТОВ (ГЛАВНАЯ СУЩНОСТЬ) -->
     <section id="tab-routes" class="tab-content active">
       <div class="stats-grid">
         <div class="stat-card total clickable active-filter" data-route-filter="all" onclick="setRouteFilter('all')">
@@ -261,33 +261,37 @@
         <div class="calc-panel">
           <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">Экспресс-проверка груза (ДОПОГ / ОГПО)</h2>
           <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-            Оценка необходимости спецразрешения при перевозке в <strong>упаковках, канистрах, бочках, баллонах</strong> (без цистерн) по разделу 1.10.3.1.2 ДОПОГ.
+            Оценка необходимости спецразрешения при перевозке в <strong>цистернах, упаковках, бочках, баллонах</strong> по разделу 1.10.3.1.2 ДОПОГ.
           </p>
 
           <div class="form-group" style="position: relative;">
             <label class="form-label">Номер ООН (UN) или наименование вещества:</label>
-            <input type="text" id="calcUnInput" class="form-input" placeholder="Введите номер ООН (например: 0275, 0007, 1005, 1202)..." autocomplete="off">
+            <input type="text" id="calcUnInput" class="form-input" placeholder="Введите 4 цифры ООН (например: 1005, 1202, 1942)..." autocomplete="off">
             <div id="calcAutocomplete" class="autocomplete-dropdown" style="display: none;"></div>
             <div class="form-hint">Быстрый выбор: 
-              <a href="javascript:void(0)" class="quick-un-link" data-un="0275">ООН 0275 (Патроны 1.3C)</a>, 
-              <a href="javascript:void(0)" class="quick-un-link" data-un="0007">ООН 0007 (Патроны 1.2F)</a>, 
               <a href="javascript:void(0)" class="quick-un-link" data-un="1005">ООН 1005 (Аммиак)</a>, 
-              <a href="javascript:void(0)" class="quick-un-link" data-un="1202">ООН 1202 (Дизтопливо)</a>
+              <a href="javascript:void(0)" class="quick-un-link" data-un="1202">ООН 1202 (Дизтопливо)</a>, 
+              <a href="javascript:void(0)" class="quick-un-link" data-un="1203">ООН 1203 (Бензин)</a>, 
+              <a href="javascript:void(0)" class="quick-un-link" data-un="1978">ООН 1978 (Пропан / СУГ)</a>, 
+              <a href="javascript:void(0)" class="quick-un-link" data-un="1942">ООН 1942 (Селитра)</a>, 
+              <a href="javascript:void(0)" class="quick-un-link" data-un="1689">ООН 1689 (Цианид)</a>
             </div>
           </div>
 
           <div class="form-row" style="margin-top: 1rem;">
             <div class="form-group">
-              <label class="form-label">Масса партии нетто (кг):</label>
-              <input type="number" id="calcWeightInput" class="form-input" placeholder="Например: 3500">
+              <label class="form-label">Масса нетто (кг) / Вместимость цистерны (л):</label>
+              <input type="number" id="calcWeightInput" class="form-input" placeholder="Например: 4500">
             </div>
             <div class="form-group">
-              <label class="form-label">Тип тары:</label>
+              <label class="form-label">Тип перевозки / тары:</label>
               <select class="form-select" id="calcPackageType">
                 <option value="drums">Бочки / Канистры</option>
+                <option value="tank">Цистерна (автоцистерна / танк-контейнер)</option>
                 <option value="cylinders">Баллоны под давлением</option>
                 <option value="bigbags">Биг-бэги (МКР) / Мешки</option>
                 <option value="boxes">Ящики / Упаковки</option>
+                <option value="ibc">Еврокубы (IBC-контейнеры)</option>
               </select>
             </div>
           </div>
@@ -303,94 +307,31 @@
         <div class="calc-panel">
           <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">Заключение экспертной системы</h2>
           <div id="calcEmptyVerdict" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-            Введите номер ООН слева и нажмите кнопку проверки
+            Введите номер ООН слева, выберите тип тары и нажмите кнопку проверки
           </div>
 
           <div id="calcResultBox" class="verdict-box" style="display: none;">
             <div class="verdict-title" id="verdictTitle"></div>
-            <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 8px;" id="verdictGoodName"></div>
+            <div style="font-weight: 700; font-size: 1rem; margin-bottom: 8px;" id="verdictGoodName"></div>
             <div class="verdict-desc" id="verdictReason"></div>
             <div style="font-size: 0.82rem; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 8px; margin-top: 8px;" id="verdictNote"></div>
             
-            <div style="margin-top: 1rem; display: flex; gap: 8px; flex-wrap: wrap;">
+            <div style="margin-top: 1rem;">
               <button class="btn btn-primary btn-sm" id="btnCreateRouteFromCalc" onclick="createRouteFromCalc()">
                 ➕ Создать Маршрут с данным грузом ООН
-              </button>
-              <button class="btn btn-secondary btn-sm" onclick="printDriverMemo()">
-                🖨️ Распечатать памятку водителю в 1 клик
               </button>
             </div>
           </div>
 
-          <!-- БЛОК ПАМЯТКИ ДЛЯ ТРАНСПОРТНОЙ НАКЛАДНОЙ И ВОДИТЕЛЯ -->
-          <div id="driverMemoContainer" style="display: none; margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h3 style="font-size: 1rem; font-weight: 700; color: #1e293b;">
-                📄 Запись в транспортную накладную (п. 5.4.1.1.1 ДОПОГ)
-              </h3>
-              <button class="btn btn-secondary btn-sm" onclick="copyConsignmentEntry()" title="Скопировать запись для вставки в накладную">
-                📋 Скопировать для ТН
-              </button>
-            </div>
-
-            <!-- Эталонная строка для накладной -->
-            <div style="background: #0f172a; color: #38bdf8; font-family: monospace; font-size: 0.95rem; font-weight: 700; padding: 12px 14px; border-radius: 6px; letter-spacing: 0.5px; border-left: 4px solid var(--primary); user-select: all;" id="consignmentStringBox">
-              UN 0000, НАИМЕНОВАНИЕ ГРУЗА...
-            </div>
-
-            <!-- Печатный лист памятки водителю -->
-            <div id="printableDriverMemo" class="printable-memo-sheet">
-              <div class="memo-header">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
-                  <div>
-                    <h2 style="font-size: 1.15rem; font-weight: 800; text-transform: uppercase;">ПАМЯТКА ВОДИТЕЛЮ И ИНСТРУКЦИЯ ПО ЗАПОЛНЕНИЮ НАКЛАДНОЙ</h2>
-                    <div style="font-size: 0.8rem; color: #555;">В соответствии с требованиями ДОПОГ / ADR (Глава 5.4) и Приказа Минтранса РФ № 258</div>
-                  </div>
-                  <div style="font-size: 1.4rem; font-weight: 900; border: 2px solid #000; padding: 4px 10px;">ДОПОГ</div>
-                </div>
-              </div>
-
-              <div class="memo-content">
-                <div style="margin-bottom: 10px;">
-                  <strong style="display: block; font-size: 0.85rem; text-transform: uppercase; color: #333;">1. Точная запись для раздела 3 транспортной накладной (ТН / CMR):</strong>
-                  <div style="font-size: 1rem; font-weight: 700; background: #f1f5f9; padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-family: monospace;" id="memoEntryText"></div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px;">
-                  <div>
-                    <strong style="font-size: 0.82rem;">Статус специального разрешения:</strong>
-                    <div id="memoPermitStatus" style="font-weight: 700; font-size: 0.9rem; margin-top: 2px;"></div>
-                  </div>
-                  <div>
-                    <strong style="font-size: 0.82rem;">Код ограничения проезда по туннелям:</strong>
-                    <div id="memoTunnelCode" style="font-weight: 700; font-size: 0.9rem; margin-top: 2px;"></div>
-                  </div>
-                </div>
-
-                <div style="margin-bottom: 10px;">
-                  <strong style="display: block; font-size: 0.82rem; margin-bottom: 4px;">2. Маркировка транспортного средства и упаковок:</strong>
-                  <div style="font-size: 0.82rem; line-height: 1.4; background: #fff; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;" id="memoMarkingText"></div>
-                </div>
-
-                <div style="margin-bottom: 10px;">
-                  <strong style="display: block; font-size: 0.82rem; margin-bottom: 4px;">3. Обязательные документы у водителя при выезде на линию:</strong>
-                  <ul style="font-size: 0.82rem; line-height: 1.4; margin-left: 20px;">
-                    <li>Транспортная накладная с указанной выше официальной записью ДОПОГ;</li>
-                    <li>Свидетельство о допуске водителя ДОПОГ (пластиковая карта);</li>
-                    <li>Свидетельство о допуске авто к перевозке опасных грузов (для спецразрешений);</li>
-                    <li>Письменные инструкции в соответствии с ДОПОГ (четырехстраничные цветные инструкции);</li>
-                    <li>Действующее Специальное разрешение Ространснадзора (если груз относится к ОГПО).</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <strong style="display: block; font-size: 0.82rem; margin-bottom: 4px;">4. Обязательное снаряжение автомобиля (п. 8.1.5 ДОПОГ):</strong>
-                  <div style="font-size: 0.8rem; line-height: 1.4; color: #444;">
-                    Противооткатный упор (не менее 1 шт. под колесо), 2 предупреждающих знака (конусы или мигающие фонари), жидкость для промывания глаз, жилет со светоотражающими полосами, переносной фонарь без металлических искрящих поверхностей, защитные перчатки и очки, лопата, дренажная ловушка и сборный контейнер.
-                  </div>
-                </div>
-              </div>
-            </div>
+          <!-- Специфика цистерн и тары -->
+          <div style="margin-top: 1.25rem; background: var(--bg-main); padding: 0.85rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted);">
+            <strong>📌 Специфика проверки цистерн и тары по ДОПОГ 1.10.3.1.2:</strong>
+            <ul style="margin-left: 1.2rem; margin-top: 4px; line-height: 1.4;">
+              <li><strong>Бензин (1203, ГУ II):</strong> в цистернах более 3 000 л <strong>требует СР</strong>, а в бочках/кубах — нет.</li>
+              <li><strong>Дизтопливо (1202, ГУ III):</strong> в цистернах и бочках <strong>СР не требует</strong> (не ОГПО по Решению ВС РФ № АКПИ13-847).</li>
+              <li><strong>Пропан / СУГ (1978, класс 2.1):</strong> в цистернах более 3 000 л <strong>требует СР</strong>, в баллонах — нет.</li>
+              <li><strong>Токсичные газы (аммиак, хлор):</strong> требуют СР <strong>при любом количестве (порог 0)</strong> как в цистернах, так и в баллонах.</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -415,20 +356,19 @@
               <input type="number" id="formRouteNumber" class="form-input" placeholder="5" required min="1">
             </div>
             <div class="form-group">
-              <label class="form-label">Направление маршрута *</label>
+              <label class="form-label">Название / Направление маршрута *</label>
               <input type="text" id="formRouteName" class="form-input" placeholder="г. Омск ➔ г. Новосибирск" required>
             </div>
           </div>
 
-          <!-- Разрешенные ООН с маской 0000 -->
           <div class="form-group">
             <label class="form-label">Разрешенные номера ООН *</label>
             <div class="tags-input-container" id="routeUnTagsContainer">
-              <input type="text" class="tags-raw-input" id="routeUnTagInput" placeholder="Введите ООН (например: 5 или 0275) и нажмите Enter...">
+              <input type="text" class="tags-raw-input" id="routeUnTagInput" placeholder="Введите ООН (например: 5 или 1202) и нажмите Enter...">
             </div>
+            <span class="form-hint">Маска ДОПОГ: число 5 автоматически запишется как 0005, 12 как 0012</span>
           </div>
 
-          <!-- Грузоотправители (погрузка) -->
           <div class="form-group">
             <label class="form-label">Грузоотправители и места погрузки *</label>
             <div class="tags-input-container" id="routeLoadTagsContainer">
@@ -436,7 +376,6 @@
             </div>
           </div>
 
-          <!-- Грузополучатели (разгрузка) -->
           <div class="form-group">
             <label class="form-label">Грузополучатели и места разгрузки *</label>
             <div class="tags-input-container" id="routeUnloadTagsContainer">
@@ -444,10 +383,9 @@
             </div>
           </div>
 
-          <!-- Детальное описание маршрута -->
           <div class="form-group">
             <label class="form-label">Детальный маршрут</label>
-            <textarea id="formRouteDetail" class="form-textarea" rows="3" placeholder="г. Омск, погрузка: Склад 3 -> а/д Р-254 -> г. Новосибирск, разгрузка: Терминал Восток"></textarea>
+            <textarea id="formRouteDetail" class="form-textarea" rows="3" placeholder="г. Омск, погрузка: Нефтезавод склад 3 -> а/д Р-254 Иртыш -> г. Барабинск -> г. Новосибирск, разгрузка: Терминал Восток"></textarea>
           </div>
         </div>
 
@@ -463,7 +401,7 @@
   <div class="modal-overlay" id="routeDetailModal">
     <div class="modal-card" style="max-width: 860px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="routeDetailTitle">Маршрут</h3>
+        <h3 class="modal-title" id="routeDetailTitle">Маршрут № 5: Омск — Новосибирск</h3>
         <button class="modal-close-btn" onclick="closeModal('routeDetailModal')">&times;</button>
       </div>
       <div class="modal-body" id="routeDetailBody"></div>
@@ -473,7 +411,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ/РЕДАКТИРОВАТЬ СР -->
+  <!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ/РЕДАКТИРОВАТЬ СР (ПРИВЯЗКА К МАРШРУТУ И АВТО) -->
   <div class="modal-overlay" id="permitModal">
     <div class="modal-card" style="max-width: 650px;">
       <div class="modal-header">
@@ -518,7 +456,7 @@
 
           <!-- Множественная загрузка файлов -->
           <div class="form-group">
-            <label class="form-label">Скан спецразрешения</label>
+            <label class="form-label">Скан спецразрешения (можно выбрать несколько файлов/страниц)</label>
             <input type="file" id="permitFilesInput" class="form-input" accept=".pdf,image/*" multiple>
             <div id="permitCurrentFilesList" style="margin-top: 6px;"></div>
           </div>
@@ -549,7 +487,7 @@
               <input type="text" id="vehiclePlate" class="form-input" placeholder="У 511 НС 155" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Марка / Название авто *</label>
+              <label class="form-label">Марка / Модель *</label>
               <input type="text" id="vehicleBrand" class="form-input" placeholder="КАМАЗ 5490 NEO" required>
             </div>
           </div>
@@ -667,7 +605,7 @@
     </div>
   </div>
 
-  <!-- Всплывающие уведомления (Toast) -->
+  <!-- Toast контейнер -->
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="dopog-db.js"></script>
