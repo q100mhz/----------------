@@ -48,7 +48,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial
 
 .app-container { max-width: 1540px; width: 100%; margin: 0 auto; padding: 1.5rem 1.75rem; flex: 1; }
 
-/* Дашборд карточки */
+/* Карточки дашборда */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .stat-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.15rem 1.25rem; position: relative; cursor: pointer; transition: 0.15s; }
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -101,7 +101,7 @@ tbody tr:hover { background: #f8fafc; }
 .route-copy-btn { background: transparent; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 0.72rem; color: var(--text-muted); cursor: pointer; margin-top: 4px; }
 .file-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; color: var(--primary); text-decoration: none; margin: 2px; }
 
-/* 1C Дата и Datepicker */
+/* 1C Дата и компактный Datepicker */
 .date-1c-wrapper { position: relative; }
 .date-input-group { display: flex; align-items: center; gap: 6px; position: relative; }
 .date-input-group .form-input { flex: 1; }
@@ -141,3 +141,45 @@ tbody tr:hover { background: #f8fafc; }
 .autocomplete-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto; z-index: 50; }
 .autocomplete-item { padding: 8px 12px; font-size: 0.84rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
 .autocomplete-item:hover { background: #eff6ff; }
+
+/* ==========================================================================
+   СТИЛИ ПЕЧАТНОЙ ФОРМЫ "ПАМЯТКА ВОДИТЕЛЮ" (@media print)
+   ========================================================================== */
+.printable-memo-sheet {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-top: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printableDriverMemo, #printableDriverMemo * {
+    visibility: visible;
+  }
+
+  #printableDriverMemo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    border: none;
+    box-shadow: none;
+    color: #000;
+    background: #fff;
+    font-size: 11pt;
+    line-height: 1.35;
+  }
+
+  a {
+    text-decoration: none;
+    color: #000;
+  }
+}
