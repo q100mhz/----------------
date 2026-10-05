@@ -120,7 +120,7 @@ const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
 if (userCount === 0) {
   const companyId = 'comp_demo_1';
   const userId = 'user_admin_1';
-  const hashedPassword = bcrypt.hashSync('test', 10);
+  const hashedPassword = bcrypt.hashSync('admin123', 10);
 
   db.prepare(`
     INSERT INTO companies (id, name, inn) VALUES (?, ?, ?)
@@ -130,7 +130,7 @@ if (userCount === 0) {
     INSERT INTO users (id, company_id, email, password_hash, full_name, consultant_cert_number, consultant_cert_start, consultant_cert_end, role)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    userId, companyId, 'test', hashedPassword, 
+    userId, companyId, 'admin@dopog.ru', hashedPassword, 
     'Иванов Алексей Сергеевич', 'ДОПОГ-КОНС № 77/00452', 
     '2024-05-15', '2029-05-14', 'admin'
   );
