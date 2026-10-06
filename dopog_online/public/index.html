@@ -13,22 +13,21 @@
     <div class="brand-wrapper">
       <div class="brand-icon">⚠</div>
       <div class="brand-text">
-        <h1>ДОПОГ Экспресс <span class="brand-badge" style="background:#10b981;color:#fff;">SaaS v2.0</span></h1>
+        <h1>ДОПОГ Экспресс <span class="brand-badge" style="background:#10b981;color:#fff;">SaaS v2.1</span></h1>
         <div class="brand-sub">Реестр маршрутов, специальных разрешений и допусков ДОПОГ</div>
       </div>
     </div>
 
-    <!-- Профиль консультанта и компании -->
     <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" id="btnEnablePush" onclick="requestPushPermission()" title="Включить звуковые и Push-оповещения">
+      <button class="btn btn-secondary btn-sm" id="btnEnablePush" onclick="requestPushPermission()" title="Включить оповещения">
         🔔 Оповещения
       </button>
 
-      <div class="user-profile-badge" onclick="openProfileModal()" title="Нажмите для просмотра карточки организации и консультанта">
+      <div class="user-profile-badge" onclick="openProfileModal()" title="Карточка организации и консультанта">
         <span class="user-avatar" id="userAvatar">К</span>
         <div>
           <div style="font-weight: 700; line-height: 1.2;" id="userFullName">Консультант ДОПОГ</div>
-          <div style="font-size: 0.72rem; color: #94a3b8;" id="consultantCertBadge">Загрузка свидетельства...</div>
+          <div style="font-size: 0.72rem; color: #94a3b8;" id="consultantCertBadge">Загрузка...</div>
         </div>
         <span class="company-tag" id="userCompanyName">Организация</span>
       </div>
@@ -37,7 +36,7 @@
     </div>
   </header>
 
-  <!-- Навигация по вкладкам -->
+  <!-- Навигация -->
   <nav class="nav-bar">
     <div class="nav-tabs">
       <button class="nav-tab active" data-tab="tab-routes" onclick="switchTab('tab-routes')">
@@ -51,7 +50,7 @@
         <span class="tab-badge" id="permitsCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-vehicles" onclick="switchTab('tab-vehicles')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
         Автопарк и Допуски ДОПОГ
         <span class="tab-badge" id="vehiclesCountBadge">0</span>
       </button>
@@ -59,13 +58,17 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         Проверка груза по ООН (ОГПО)
       </button>
+      <button class="nav-tab" data-tab="tab-admin" onclick="switchTab('tab-admin')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Админка
+      </button>
     </div>
   </nav>
 
-  <!-- Контент -->
+  <!-- Основной контейнер -->
   <main class="app-container">
 
-    <!-- ВКЛАДКА 1: РЕЕСТР МАРШРУТОВ (ГЛАВНАЯ СУЩНОСТЬ) -->
+    <!-- ВКЛАДКА 1: РЕЕСТР МАРШРУТОВ -->
     <section id="tab-routes" class="tab-content active">
       <div class="stats-grid">
         <div class="stat-card total clickable active-filter" data-route-filter="all" onclick="setRouteFilter('all')">
@@ -98,18 +101,13 @@
       <div class="toolbar">
         <div class="search-box">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="routeSearchInput" class="search-input" placeholder="Поиск маршрута: номер, города, ООН, грузоотправитель, грузополучатель...">
+          <input type="text" id="routeSearchInput" class="search-input" placeholder="Поиск: номер, город, ООН, грузоотправитель, грузополучатель...">
         </div>
         <div class="filter-group">
-          <button class="filter-btn active" data-rfilter="all" onclick="setRouteFilter('all')">Все</button>
-          <button class="filter-btn" data-rfilter="active" onclick="setRouteFilter('active')">Обеспечены</button>
-          <button class="filter-btn" data-rfilter="warning" onclick="setRouteFilter('warning')">15–30 дн.</button>
-          <button class="filter-btn" data-rfilter="critical" onclick="setRouteFilter('critical')">1–14 дн.</button>
-          <button class="filter-btn" data-rfilter="expired" onclick="setRouteFilter('expired')">Без СР / Просрочено</button>
+          <button class="filter-btn active" id="btnRoutesTabActive" onclick="setRouteArchiveView(false)">Активные</button>
+          <button class="filter-btn" id="btnRoutesTabArchive" onclick="setRouteArchiveView(true)">Архив маршрутов</button>
         </div>
-        <button class="btn btn-primary" onclick="openAddRouteModal()">
-          + Новый Маршрут
-        </button>
+        <button class="btn btn-primary" onclick="openAddRouteModal()">+ Новый Маршрут</button>
       </div>
 
       <div class="table-card">
@@ -133,7 +131,7 @@
       </div>
     </section>
 
-    <!-- ВКЛАДКА 2: РЕЕСТР СПЕЦИАЛЬНЫХ РАЗРЕШЕНИЙ (СР) -->
+    <!-- ВКЛАДКА 2: РЕЕСТР СПЕЦРАЗРЕШЕНИЙ -->
     <section id="tab-permits" class="tab-content" style="display: none;">
       <div class="stats-grid">
         <div class="stat-card total clickable active-filter" data-permit-filter="all" onclick="setPermitFilter('all')">
@@ -175,9 +173,7 @@
           <button class="filter-btn" data-pfilter="critical" onclick="setPermitFilter('critical')">1–14 дн.</button>
           <button class="filter-btn" data-pfilter="expired" onclick="setPermitFilter('expired')">Просрочены</button>
         </div>
-        <button class="btn btn-primary" onclick="openAddPermitModal()">
-          + Выпустить Спецразрешение
-        </button>
+        <button class="btn btn-primary" onclick="openAddPermitModal()">+ Выпустить Спецразрешение</button>
       </div>
 
       <div class="table-card">
@@ -186,7 +182,7 @@
             <thead>
               <tr>
                 <th class="sortable-th" onclick="sortPermits('routeNumber')">№ Маршрута ⬍</th>
-                <th class="sortable-th" onclick="sortPermits('number')">№ СР ⬍</th>
+                <th class="sortable-th" onclick="sortPermits('number')">Номер спецразрешения ⬍</th>
                 <th class="sortable-th" onclick="sortPermits('vehicle')">Автомобиль ⬍</th>
                 <th>Маршрут и точки</th>
                 <th class="sortable-th" onclick="sortPermits('endDate')">Срок действия ⬍</th>
@@ -200,7 +196,7 @@
       </div>
     </section>
 
-    <!-- ВКЛАДКА 3: АВТОПАРК И ДОПУСКИ ДОПОГ -->
+    <!-- ВКЛАДКА 3: АВТОПАРК -->
     <section id="tab-vehicles" class="tab-content" style="display: none;">
       <div class="stats-grid">
         <div class="stat-card total clickable active-filter" data-vehicle-filter="all" onclick="setVehicleFilter('all')">
@@ -228,11 +224,9 @@
       <div class="toolbar">
         <div class="search-box">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="vehicleSearchInput" class="search-input" placeholder="Поиск авто по госномеру, марке, СТС...">
+          <input type="text" id="vehicleSearchInput" class="search-input" placeholder="Поиск авто по госномеру, марке, VIN, СТС...">
         </div>
-        <button class="btn btn-primary" onclick="openAddVehicleModal()">
-          + Добавить автомобиль
-        </button>
+        <button class="btn btn-primary" onclick="openAddVehicleModal()">+ Добавить автомобиль</button>
       </div>
 
       <div class="table-card">
@@ -240,10 +234,12 @@
           <table id="vehiclesTable">
             <thead>
               <tr>
-                <th style="min-width: 150px;">Госномер</th>
+                <th style="width: 180px; min-width: 180px;">Госномер</th>
                 <th>Марка / Название</th>
-                <th>Документ СТС</th>
-                <th>Свидетельство ДОПОГ</th>
+                <th>VIN</th>
+                <th>Тип ТС</th>
+                <th>СТС</th>
+                <th>Допуск ДОПОГ</th>
                 <th>Срок действия допуска</th>
                 <th>Действующих СР</th>
                 <th style="text-align: right;">Действия</th>
@@ -266,15 +262,14 @@
 
           <div class="form-group" style="position: relative;">
             <label class="form-label">Номер ООН (UN) или наименование вещества:</label>
-            <input type="text" id="calcUnInput" class="form-input" placeholder="Введите 4 цифры ООН (например: 1005, 1202, 1942)..." autocomplete="off">
+            <input type="text" id="calcUnInput" class="form-input" placeholder="Введите 4 цифры ООН (например: 0005, 1005, 1202)..." autocomplete="off">
             <div id="calcAutocomplete" class="autocomplete-dropdown" style="display: none;"></div>
             <div class="form-hint">Быстрый выбор: 
+              <a href="javascript:void(0)" class="quick-un-link" data-un="0005">ООН 0005</a>, 
               <a href="javascript:void(0)" class="quick-un-link" data-un="1005">ООН 1005 (Аммиак)</a>, 
               <a href="javascript:void(0)" class="quick-un-link" data-un="1202">ООН 1202 (Дизтопливо)</a>, 
               <a href="javascript:void(0)" class="quick-un-link" data-un="1203">ООН 1203 (Бензин)</a>, 
-              <a href="javascript:void(0)" class="quick-un-link" data-un="1978">ООН 1978 (Пропан / СУГ)</a>, 
-              <a href="javascript:void(0)" class="quick-un-link" data-un="1942">ООН 1942 (Селитра)</a>, 
-              <a href="javascript:void(0)" class="quick-un-link" data-un="1689">ООН 1689 (Цианид)</a>
+              <a href="javascript:void(0)" class="quick-un-link" data-un="1978">ООН 1978 (Пропан)</a>
             </div>
           </div>
 
@@ -291,7 +286,7 @@
                 <option value="cylinders">Баллоны под давлением</option>
                 <option value="bigbags">Биг-бэги (МКР) / Мешки</option>
                 <option value="boxes">Ящики / Упаковки</option>
-                <option value="ibc">Еврокубы (IBC-контейнеры)</option>
+                <option value="ibc">Еврокубы (IBC)</option>
               </select>
             </div>
           </div>
@@ -317,22 +312,58 @@
             <div style="font-size: 0.82rem; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 8px; margin-top: 8px;" id="verdictNote"></div>
             
             <div style="margin-top: 1rem;">
-              <button class="btn btn-primary btn-sm" id="btnCreateRouteFromCalc" onclick="createRouteFromCalc()">
+              <button class="btn btn-primary btn-sm" onclick="createRouteFromCalc()">
                 ➕ Создать Маршрут с данным грузом ООН
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
 
-          <!-- Специфика цистерн и тары -->
-          <div style="margin-top: 1.25rem; background: var(--bg-main); padding: 0.85rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted);">
-            <strong>📌 Специфика проверки цистерн и тары по ДОПОГ 1.10.3.1.2:</strong>
-            <ul style="margin-left: 1.2rem; margin-top: 4px; line-height: 1.4;">
-              <li><strong>Бензин (1203, ГУ II):</strong> в цистернах более 3 000 л <strong>требует СР</strong>, а в бочках/кубах — нет.</li>
-              <li><strong>Дизтопливо (1202, ГУ III):</strong> в цистернах и бочках <strong>СР не требует</strong> (не ОГПО по Решению ВС РФ № АКПИ13-847).</li>
-              <li><strong>Пропан / СУГ (1978, класс 2.1):</strong> в цистернах более 3 000 л <strong>требует СР</strong>, в баллонах — нет.</li>
-              <li><strong>Токсичные газы (аммиак, хлор):</strong> требуют СР <strong>при любом количестве (порог 0)</strong> как в цистернах, так и в баллонах.</li>
-            </ul>
-          </div>
+    <!-- ВКЛАДКА 5: АДМИНКА -->
+    <section id="tab-admin" class="tab-content" style="display: none;">
+      <div class="stats-grid">
+        <div class="stat-card total">
+          <div class="stat-title">Компаний-клиентов</div>
+          <div class="stat-value" id="adminTotalCompanies">0</div>
+          <div class="stat-desc">Зарегистрировано в системе</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-title">Пользователей</div>
+          <div class="stat-value" id="adminTotalUsers">0</div>
+          <div class="stat-desc">Диспетчеры и консультанты</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-title">Автомобилей в базах</div>
+          <div class="stat-value" id="adminTotalVehicles">0</div>
+          <div class="stat-desc">По всем автопаркам</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-title">Активных маршрутов</div>
+          <div class="stat-value" id="adminTotalRoutes">0</div>
+          <div class="stat-desc">По всем клиентам</div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">Реестр компаний-клиентов</h3>
+      <div class="table-card">
+        <div class="table-wrapper">
+          <table id="adminCompaniesTable">
+            <thead>
+              <tr>
+                <th>Название организации</th>
+                <th>ИНН</th>
+                <th>ОГРН</th>
+                <th>Руководитель</th>
+                <th>Контактное лицо</th>
+                <th>Телефон</th>
+                <th>ТС / Маршруты / СР</th>
+                <th>Дата регистрации</th>
+              </tr>
+            </thead>
+            <tbody id="adminCompaniesTableBody"></tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -341,7 +372,7 @@
 
   <!-- МОДАЛЬНОЕ ОКНО: МАРШРУТ (ДОБАВИТЬ/РЕДАКТИРОВАТЬ) -->
   <div class="modal-overlay" id="routeModal">
-    <div class="modal-card" style="max-width: 700px;">
+    <div class="modal-card" style="max-width: 760px;">
       <div class="modal-header">
         <h3 class="modal-title" id="routeModalTitle">Карточка Маршрута</h3>
         <button class="modal-close-btn" onclick="closeModal('routeModal')">&times;</button>
@@ -351,22 +382,22 @@
           <input type="hidden" id="routeEditId">
 
           <div class="form-row">
-            <div class="form-group" style="max-width: 160px;">
+            <div class="form-group" style="max-width: 140px;">
               <label class="form-label">№ Маршрута *</label>
-              <input type="number" id="formRouteNumber" class="form-input" placeholder="5" required min="1">
+              <input type="number" id="formRouteNumber" class="form-input" placeholder="55" required min="1">
             </div>
             <div class="form-group">
               <label class="form-label">Название / Направление маршрута *</label>
-              <input type="text" id="formRouteName" class="form-input" placeholder="г. Омск ➔ г. Новосибирск" required>
+              <input type="text" id="formRouteName" class="form-input" placeholder="Муром — Омск (Класс 1)" required>
             </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Разрешенные номера ООН *</label>
             <div class="tags-input-container" id="routeUnTagsContainer">
-              <input type="text" class="tags-raw-input" id="routeUnTagInput" placeholder="Введите ООН (например: 5 или 1202) и нажмите Enter...">
+              <input type="text" class="tags-raw-input" id="routeUnTagInput" placeholder="Введите или вставьте список ООН...">
             </div>
-            <span class="form-hint">Маска ДОПОГ: число 5 автоматически запишется как 0005, 12 как 0012</span>
+            <span class="form-hint">Поддерживается умная вставка списков («ООН 0005ООН 0007...» или через запятую). Номер ООН не может содержать 5+ цифр.</span>
           </div>
 
           <div class="form-group">
@@ -377,15 +408,25 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Грузополучатели и места разгрузки *</label>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label class="form-label">Грузополучатели и места разгрузки *</label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="copyLoadsToUnloads()" style="padding: 2px 8px; font-size: 0.75rem;">
+                📋 Скопировать из грузоотправителей
+              </button>
+            </div>
             <div class="tags-input-container" id="routeUnloadTagsContainer">
               <input type="text" class="tags-raw-input" id="routeUnloadTagInput" placeholder="Введите склад выгрузки и нажмите Enter...">
             </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Детальный маршрут</label>
-            <textarea id="formRouteDetail" class="form-textarea" rows="3" placeholder="г. Омск, погрузка: Нефтезавод склад 3 -> а/д Р-254 Иртыш -> г. Барабинск -> г. Новосибирск, разгрузка: Терминал Восток"></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="form-label">Подробный маршрут</label>
+              <a href="https://скдф.рф/map" target="_blank" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.75rem; text-decoration: none;">
+                🗺️ Карта СКДФ
+              </a>
+            </div>
+            <textarea id="formRouteDetail" class="form-textarea" rows="3" placeholder="гор. Муром: ул. 30 лет Победы -> а.д. М-7 Волга -> г. Казань -> г. Уфа -> г. Омск... И обратно."></textarea>
           </div>
         </div>
 
@@ -397,11 +438,11 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ПРОСМОТР МАРШРУТА СО СПИСКОМ СР И ПАКЕТОМ ДОКУМЕНТОВ -->
+  <!-- МОДАЛЬНОЕ ОКНО: ДЕТАЛЬНЫЙ ПРОСМОТР МАРШРУТА -->
   <div class="modal-overlay" id="routeDetailModal">
-    <div class="modal-card" style="max-width: 860px;">
+    <div class="modal-card" style="max-width: 880px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="routeDetailTitle">Маршрут № 5: Омск — Новосибирск</h3>
+        <h3 class="modal-title" id="routeDetailTitle">Маршрут</h3>
         <button class="modal-close-btn" onclick="closeModal('routeDetailModal')">&times;</button>
       </div>
       <div class="modal-body" id="routeDetailBody"></div>
@@ -411,7 +452,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ДЕТАЛЬНЫЙ ПРОСМОТР СПЕЦРАЗРЕШЕНИЯ (КАРТОЧКА СР) -->
+  <!-- МОДАЛЬНОЕ ОКНО: ДЕТАЛЬНЫЙ ПРОСМОТР СПЕЦРАЗРЕШЕНИЯ -->
   <div class="modal-overlay" id="permitDetailModal">
     <div class="modal-card" style="max-width: 780px;">
       <div class="modal-header">
@@ -426,7 +467,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ/РЕДАКТИРОВАТЬ СР (ПРИВЯЗКА К МАРШРУТУ И АВТО) -->
+  <!-- МОДАЛЬНОЕ ОКНО: ВЫПУСК СПЕЦРАЗРЕШЕНИЯ (МНОЖЕСТВЕННЫЙ СКАН) -->
   <div class="modal-overlay" id="permitModal">
     <div class="modal-card" style="max-width: 650px;">
       <div class="modal-header">
@@ -448,30 +489,29 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Номер спецразрешения (маска ХХ ХХХХХХ/э) *</label>
-            <input type="text" id="permitNumber" class="form-input" placeholder="77 123456/э" required maxlength="12">
+            <label class="form-label">Номер спецразрешения *</label>
+            <input type="text" id="permitNumber" class="form-input" placeholder="55 004521/э" required maxlength="12">
           </div>
 
           <div class="form-row">
-            <div class="form-group date-1c-wrapper">
+            <div class="form-group">
               <label class="form-label">Дата выдачи (начала) *</label>
               <div class="date-input-group">
-                <input type="text" id="permitStartDate" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ" required>
-                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'permitStartDate')">
+                <input type="text" id="permitStartDate" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" required maxlength="10">
+                <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'permitStartDate')">
               </div>
             </div>
-            <div class="form-group date-1c-wrapper">
+            <div class="form-group">
               <label class="form-label">Срок действия (по) *</label>
               <div class="date-input-group">
-                <input type="text" id="permitEndDate" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ" required>
-                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'permitEndDate')">
+                <input type="text" id="permitEndDate" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" required maxlength="10">
+                <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'permitEndDate')">
               </div>
             </div>
           </div>
 
-          <!-- Множественная загрузка файлов -->
           <div class="form-group">
-            <label class="form-label">Скан спецразрешения (можно выбрать несколько файлов/страниц)</label>
+            <label class="form-label">Скан спецразрешения (можно выбрать несколько файлов)</label>
             <input type="file" id="permitFilesInput" class="form-input" accept=".pdf,image/*" multiple>
             <div id="permitCurrentFilesList" style="margin-top: 6px;"></div>
           </div>
@@ -499,11 +539,22 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Госномер ТС *</label>
-              <input type="text" id="vehiclePlate" class="form-input" placeholder="У 511 НС 155" required>
+              <input type="text" id="vehiclePlate" class="form-input" placeholder="У 511 НС 55" required>
             </div>
             <div class="form-group">
               <label class="form-label">Марка / Модель *</label>
-              <input type="text" id="vehicleBrand" class="form-input" placeholder="КАМАЗ 5490 NEO" required>
+              <input type="text" id="vehicleBrand" class="form-input" placeholder="AF 475600 V" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">VIN (Идентификационный номер)</label>
+              <input type="text" id="vehicleVin" class="form-input" placeholder="X9H475600K8V00007" maxlength="17">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Тип транспортного средства</label>
+              <input type="text" id="vehicleType" class="form-input" placeholder="Грузовой фургон">
             </div>
           </div>
 
@@ -527,11 +578,11 @@
           </div>
 
           <div class="form-row">
-            <div class="form-group date-1c-wrapper">
+            <div class="form-group">
               <label class="form-label">Срок действия допуска ДОПОГ (по) *</label>
               <div class="date-input-group">
-                <input type="text" id="vehicleDopogExpiryDate" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ" required>
-                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'vehicleDopogExpiryDate')">
+                <input type="text" id="vehicleDopogExpiryDate" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" required maxlength="10">
+                <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'vehicleDopogExpiryDate')">
               </div>
             </div>
             <div class="form-group">
@@ -552,7 +603,7 @@
 
   <!-- МОДАЛЬНОЕ ОКНО: КАРТОЧКА АВТО СО СПИСКОМ ДОКУМЕНТОВ И СР -->
   <div class="modal-overlay" id="vehicleDetailModal">
-    <div class="modal-card" style="max-width: 820px;">
+    <div class="modal-card" style="max-width: 840px;">
       <div class="modal-header">
         <h3 class="modal-title" id="vehicleDetailTitle">Карточка автомобиля</h3>
         <button class="modal-close-btn" onclick="closeModal('vehicleDetailModal')">&times;</button>
@@ -564,61 +615,157 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ПРОФИЛЬ КОНСУЛЬТАНТА И ОРГАНИЗАЦИИ -->
+  <!-- МОДАЛЬНОЕ ОКНО: ПРОФИЛЬ ОРГАНИЗАЦИИ И КОНСУЛЬТАНТА -->
   <div class="modal-overlay" id="profileModal">
-    <div class="modal-card" style="max-width: 540px;">
+    <div class="modal-card" style="max-width: 620px;">
       <div class="modal-header">
         <h3 class="modal-title">Карточка организации и консультанта ДОПОГ</h3>
         <button class="modal-close-btn" onclick="closeModal('profileModal')">&times;</button>
       </div>
       <form id="profileForm">
         <div class="modal-body">
-          <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;">Данные организации</h4>
+          <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;">Реквизиты организации-заявителя</h4>
           <div class="form-group">
-            <label class="form-label">Название организации *</label>
-            <input type="text" id="profCompanyName" class="form-input" required>
+            <label class="form-label">Полное наименование организации *</label>
+            <textarea id="profCompanyName" class="form-textarea" rows="2" required placeholder="Филиал Федерального государственного унитарного предприятия..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ИНН организации *</label>
+              <input type="text" id="profCompanyInn" class="form-input" placeholder="7717043113" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ОГРН / ОГРНИП *</label>
+              <input type="text" id="profCompanyOgrn" class="form-input" placeholder="1027700041830" required>
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">ИНН организации</label>
-            <input type="text" id="profCompanyInn" class="form-input" placeholder="10 или 12 цифр">
+            <label class="form-label">Адрес в пределах места нахождения *</label>
+            <input type="text" id="profLegalAddress" class="form-input" placeholder="644042, г. Омск, ул. Иртышская набережная, д. 17" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Телефон организации *</label>
+              <input type="text" id="profCompanyPhone" class="form-input phone-mask" placeholder="+7 905 097-69-66" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Должность руководителя *</label>
+              <input type="text" id="profHeadPosition" class="form-input" placeholder="Начальник Управления" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ФИО руководителя *</label>
+            <input type="text" id="profHeadName" class="form-input" placeholder="Абрамов Евгений Борисович" required>
           </div>
 
           <div style="border-top:1px solid var(--border-color);margin:8px 0;"></div>
-          <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;">Свидетельство консультанта по ДОПОГ</h4>
+          <h4 style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;">Сведения о консультанте по ДОПОГ</h4>
 
-          <div class="form-group">
-            <label class="form-label">ФИО ответственного консультанта *</label>
-            <input type="text" id="profFullName" class="form-input" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ФИО консультанта *</label>
+              <input type="text" id="profFullName" class="form-input" placeholder="Павленко Денис Сергеевич" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Телефон консультанта</label>
+              <input type="text" id="profPhone" class="form-input phone-mask" placeholder="+7 999 444-22-33">
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Номер свидетельства консультанта</label>
-            <input type="text" id="profCertNum" class="form-input" placeholder="ДОПОГ-КОНС № 55/00142">
+            <label class="form-label">Серия и номер свидетельства консультанта</label>
+            <input type="text" id="profCertNum" class="form-input" placeholder="54 00853" maxlength="8">
+            <span class="form-hint">Формат заполнения: ХХ ХХХХХ (например: 54 00853)</span>
           </div>
 
           <div class="form-row">
-            <div class="form-group date-1c-wrapper">
+            <div class="form-group">
               <label class="form-label">Выдано с</label>
               <div class="date-input-group">
-                <input type="text" id="profCertStart" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ">
-                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'profCertStart')">
+                <input type="text" id="profCertStart" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" maxlength="10">
+                <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'profCertStart')">
               </div>
             </div>
-            <div class="form-group date-1c-wrapper">
+            <div class="form-group">
               <label class="form-label">Действует по</label>
               <div class="date-input-group">
-                <input type="text" id="profCertEnd" class="form-input date-1c" placeholder="ДД.ММ.ГГГГ">
-                <input type="date" class="native-datepicker" onchange="syncDateFromPicker(this, 'profCertEnd')">
+                <input type="text" id="profCertEnd" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" maxlength="10">
+                <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'profCertEnd')">
               </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeModal('profileModal')">Отмена</button>
-          <button type="submit" class="btn btn-primary">Сохранить</button>
+          <button type="submit" class="btn btn-primary">Сохранить реквизиты</button>
         </div>
       </form>
     </div>
   </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ПОДГОТОВКА ДОКУМЕНТОВ В УГАДН (ПУНКТ 20) -->
+  <div class="modal-overlay" id="ugadnModal">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Подготовка документов в УГАДН (Ространснадзор)</h3>
+        <button class="modal-close-btn" onclick="closeModal('ugadnModal')">&times;</button>
+      </div>
+      <form id="ugadnForm">
+        <div class="modal-body">
+          <input type="hidden" id="ugadnRouteId">
+
+          <div class="form-group">
+            <label class="form-label">Подразделение Ространснадзора</label>
+            <input type="text" id="ugadnTarget" class="form-input" value="в МТУ Ространснадзора по СФО" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Транспортное средство из автопарка *</label>
+            <select id="ugadnVehicleSelect" class="form-select" required></select>
+            <span class="form-hint">Автоматически подтягиваются VIN, тип ТС, СТС и свидетельство о допуске ДОПОГ</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Реквизиты платежного поручения госпошлины *</label>
+              <input type="text" id="ugadnPaymentReqs" class="form-input" placeholder="№ 512 от 05.10.2026" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Файл платежного поручения (1 шт)</label>
+              <input type="file" id="ugadnPaymentFile" class="form-input" accept=".pdf,image/*">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Предполагаемый срок перевозки с (необязательно)</label>
+              <div class="date-input-group">
+                <input type="text" id="ugadnPeriodStart" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" maxlength="10">
+                <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'ugadnPeriodStart')">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">по (необязательно)</label>
+              <div class="date-input-group">
+                <input type="text" id="ugadnPeriodEnd" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" maxlength="10">
+                <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'ugadnPeriodEnd')">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('ugadnModal')">Отмена</button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-primary" onclick="generateAndDownloadApplication()">📥 Скачать Заявление</button>
+            <button type="button" class="btn btn-primary" style="background:#059669;" onclick="printFullDocumentPackage()">🖨️ Печать 4 документов</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- СКРЫТАЯ ОБЛАСТЬ ДЛЯ ПЕЧАТИ 4 ДОКУМЕНТОВ -->
+  <div id="printDocumentArea" style="display: none;"></div>
 
   <!-- Toast контейнер -->
   <div class="toast-container" id="toastContainer"></div>
