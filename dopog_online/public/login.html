@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 20%, #1e293b 0%, #0f172a 100%); padding: 1.5rem; }
-    .auth-card { background: #ffffff; border-radius: var(--radius-lg); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); max-width: 480px; width: 100%; overflow: hidden; }
+    .auth-card { background: #ffffff; border-radius: var(--radius-lg); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); max-width: 520px; width: 100%; overflow: hidden; }
     .auth-header { background: #0f172a; color: #fff; padding: 2rem; text-align: center; }
     .auth-body { padding: 2rem; }
     .auth-nav { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; }
@@ -44,7 +44,7 @@
           <label class="form-label">Пароль</label>
           <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;" id="btnLoginSubmit">
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">
           Войти в личный кабинет
         </button>
         <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius-sm); padding: 10px; margin-top: 1.25rem; font-size: 0.82rem; color: #475569;">
@@ -55,40 +55,49 @@
       <!-- РЕГИСТРАЦИЯ -->
       <form id="registerForm" style="display: none;">
         <div class="form-group" style="margin-bottom: 0.75rem;">
-          <label class="form-label">Название компании *</label>
-          <input type="text" id="regCompany" class="form-input" placeholder="ООО &quot;Транс-Логистик&quot;" required>
-        </div>
-        <div class="form-group" style="margin-bottom: 0.75rem;">
-          <label class="form-label">ИНН организации</label>
-          <input type="text" id="regInn" class="form-input" placeholder="10 или 12 цифр">
-        </div>
-        <div class="form-group" style="margin-bottom: 0.75rem;">
-          <label class="form-label">ФИО консультанта / диспетчера *</label>
-          <input type="text" id="regFullName" class="form-input" placeholder="Иванов Алексей Сергеевич" required>
-        </div>
-        <div class="form-group" style="margin-bottom: 0.75rem;">
-          <label class="form-label">Номер свидетельства консультанта ДОПОГ</label>
-          <input type="text" id="regCertNum" class="form-input" placeholder="№ 77/00452">
+          <label class="form-label">Полное наименование организации *</label>
+          <textarea id="regCompany" class="form-textarea" rows="2" placeholder="Филиал ФГУП «ГЦСС»..." required></textarea>
         </div>
         <div class="form-row" style="margin-bottom: 0.75rem;">
           <div class="form-group">
-            <label class="form-label">Выдано с</label>
-            <input type="date" id="regCertStart" class="form-input">
+            <label class="form-label">ИНН организации *</label>
+            <input type="text" id="regInn" class="form-input" placeholder="7717043113" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Действует по</label>
-            <input type="date" id="regCertEnd" class="form-input">
+            <label class="form-label">ОГРН / ОГРНИП</label>
+            <input type="text" id="regOgrn" class="form-input" placeholder="1027700041830">
           </div>
         </div>
         <div class="form-group" style="margin-bottom: 0.75rem;">
-          <label class="form-label">Email для входа *</label>
-          <input type="email" id="regEmail" class="form-input" placeholder="dispatcher@company.ru" required>
+          <label class="form-label">ФИО ответственного консультанта *</label>
+          <input type="text" id="regFullName" class="form-input" placeholder="Павленко Денис Сергеевич" required>
+        </div>
+        <div class="form-row" style="margin-bottom: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Должность консультанта</label>
+            <input type="text" id="regConsultantPos" class="form-input" placeholder="Консультант по ДОПОГ">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Свидетельство консультанта</label>
+            <input type="text" id="regCertNum" class="form-input" placeholder="54 00853" maxlength="8">
+            <span class="form-hint">Маска: ХХ ХХХХХ</span>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Телефон для связи</label>
+            <input type="text" id="regPhone" class="form-input phone-mask" placeholder="+7 905 097-69-66">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email для входа *</label>
+            <input type="email" id="regEmail" class="form-input" placeholder="dispatcher@company.ru" required>
+          </div>
         </div>
         <div class="form-group" style="margin-bottom: 1.25rem;">
           <label class="form-label">Пароль *</label>
           <input type="password" id="regPassword" class="form-input" placeholder="Минимум 6 символов" required minlength="6">
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;" id="btnRegSubmit">
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">
           Зарегистрировать компанию
         </button>
       </form>
@@ -112,6 +121,29 @@
       a.textContent = txt;
       a.style.display = 'block';
     }
+
+    // Маска свидетельства ХХ ХХХХХ
+    document.getElementById('regCertNum').addEventListener('input', (e) => {
+      let val = e.target.value.replace(/[^0-9]/g, '');
+      if (val.length > 7) val = val.substring(0, 7);
+      let formatted = '';
+      if (val.length > 0) formatted = val.substring(0, 2);
+      if (val.length > 2) formatted += ' ' + val.substring(2, 7);
+      e.target.value = formatted;
+    });
+
+    // Маска телефона
+    document.getElementById('regPhone').addEventListener('input', (e) => {
+      let val = e.target.value.replace(/\D/g, '');
+      if (val.startsWith('7') || val.startsWith('8')) val = val.substring(1);
+      if (val.length > 10) val = val.substring(0, 10);
+      let formatted = '+7';
+      if (val.length > 0) formatted += ' ' + val.substring(0, 3);
+      if (val.length >= 4) formatted += ' ' + val.substring(3, 6);
+      if (val.length >= 7) formatted += ' ' + val.substring(6, 8);
+      if (val.length >= 9) formatted += ' ' + val.substring(8, 10);
+      e.target.value = formatted;
+    });
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -141,10 +173,11 @@
           body: JSON.stringify({
             companyName: document.getElementById('regCompany').value,
             inn: document.getElementById('regInn').value,
+            ogrn: document.getElementById('regOgrn').value,
             fullName: document.getElementById('regFullName').value,
+            consultantPosition: document.getElementById('regConsultantPos').value,
             consultantCertNumber: document.getElementById('regCertNum').value,
-            consultantCertStart: document.getElementById('regCertStart').value,
-            consultantCertEnd: document.getElementById('regCertEnd').value,
+            phone: document.getElementById('regPhone').value,
             email: document.getElementById('regEmail').value,
             password: document.getElementById('regPassword').value
           })
@@ -152,7 +185,6 @@
         const data = await res.json();
         if (!res.ok) return showAlert(data.error || 'Ошибка регистрации');
         localStorage.setItem('dopog_token', data.token);
-        localStorage.setItem('dopog_user', JSON.stringify(data.user));
         window.location.href = '/index.html';
       } catch (err) { showAlert('Ошибка связи с сервером'); }
     });

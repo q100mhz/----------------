@@ -19,7 +19,6 @@ let activeVehicleFilter = 'all';
 let permitSortField = 'routeNumber';
 let permitSortAsc = true;
 
-// Отслеживание изменений форм для подтверждения закрытия
 const formSnapshots = new Map();
 
 if (!authToken) window.location.href = '/login.html';
@@ -45,7 +44,7 @@ function logoutUser() {
   window.location.href = '/login.html';
 }
 
-// --- УМНОЕ ЗАКРЫТИЕ МОДАЛЬНЫХ ОКОН С ПРОВЕРКОЙ ИЗМЕНЕНИЙ (ПУНКТ 3) ---
+// --- УМНОЕ ЗАКРЫТИЕ МОДАЛОК (ПУНКТ 3) ---
 function takeFormSnapshot(modalId) {
   const modal = document.getElementById(modalId);
   const form = modal.querySelector('form');
@@ -91,7 +90,41 @@ function handleRowClick(event, type, id) {
   if (type === 'vehicle') openVehicleCard(id);
 }
 
-// --- МАСКА ТЕЛЕФОНА +7 999 444 22 33 (ПУНКТ 7) ---
+// --- МАСКИ (ПУНКТ 2, 3, 7, 16) ---
+
+// 1. Маска госномера ТС: Х ННН ХХ НН (или Х ННН ХХ ННН)
+function applyPlateMask(e) {
+  let val = e.target.value.toUpperCase().replace(/[^АВЕКМНОРСТУХA-Z0-9]/g, '');
+  let formatted = '';
+  if (val.length > 0) formatted = val.substring(0, 1);
+  if (val.length > 1) formatted += ' ' + val.substring(1, Math.min(4, val.length));
+  if (val.length > 4) formatted += ' ' + val.substring(4, Math.min(6, val.length));
+  if (val.length > 6) formatted += ' ' + val.substring(6, Math.min(9, val.length));
+  e.target.value = formatted;
+}
+
+// 2. Маска номера СТС: НН НН НННННН
+function applyStsMask(e) {
+  let val = e.target.value.replace(/\D/g, '');
+  if (val.length > 10) val = val.substring(0, 10);
+  let formatted = '';
+  if (val.length > 0) formatted = val.substring(0, 2);
+  if (val.length > 2) formatted += ' ' + val.substring(2, 4);
+  if (val.length > 4) formatted += ' ' + val.substring(4, 10);
+  e.target.value = formatted;
+}
+
+// 3. Маска свидетельства консультанта: ХХ ХХХХХ
+function applyConsultantCertMask(input) {
+  let val = input.value.replace(/[^0-9]/g, '');
+  if (val.length > 7) val = val.substring(0, 7);
+  let formatted = '';
+  if (val.length > 0) formatted = val.substring(0, 2);
+  if (val.length > 2) formatted += ' ' + val.substring(2, 7);
+  input.value = formatted;
+}
+
+// 4. Маска телефона: +7 999 444 22 33
 function applyPhoneMask(e) {
   let val = e.target.value.replace(/\D/g, '');
   if (val.startsWith('7') || val.startsWith('8')) val = val.substring(1);
@@ -102,20 +135,17 @@ function applyPhoneMask(e) {
   if (val.length >= 4) formatted += ' ' + val.substring(3, 6);
   if (val.length >= 7) formatted += ' ' + val.substring(6, 8);
   if (val.length >= 9) formatted += ' ' + val.substring(8, 10);
-
   e.target.value = formatted;
 }
 
-// --- УМНАЯ МАСКА ДАТЫ 1С (ПУНКТ 2, 16) ---
+// 5. Маска даты: ДД.ММ.ГГГГ
 function applyDateInputMask(e) {
   let val = e.target.value.replace(/\D/g, '');
   if (val.length > 8) val = val.substring(0, 8);
-
   let formatted = '';
   if (val.length > 0) formatted = val.substring(0, 2);
   if (val.length >= 3) formatted += '.' + val.substring(2, 4);
   if (val.length >= 5) formatted += '.' + val.substring(4, 8);
-
   e.target.value = formatted;
 }
 
@@ -143,9 +173,7 @@ function finalizeDate1C(inputStr) {
     let rawY = parseInt(parts[2], 10);
     if (rawY < 100) rawY += 2000;
     y = String(rawY);
-  } else {
-    return inputStr;
-  }
+  } else return inputStr;
 
   const test = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
   if (isNaN(test.getTime())) return inputStr;
@@ -186,7 +214,6 @@ function calculateEndDate(start1CStr) {
   return `${String(end.getDate()).padStart(2, '0')}.${String(end.getMonth() + 1).padStart(2, '0')}.${end.getFullYear()}`;
 }
 
-// Маска номера СР ХХ ХХХХХХ/э
 function applyPermitNumberMask(input) {
   let val = input.value.replace(/[^0-9]/g, '');
   if (val.length > 8) val = val.substring(0, 8);
@@ -197,19 +224,7 @@ function applyPermitNumberMask(input) {
   input.value = formatted;
 }
 
-// Маска свидетельства консультанта ХХ ХХХХХ
-function applyConsultantCertMask(input) {
-  let val = input.value.replace(/[^0-9]/g, '');
-  if (val.length > 7) val = val.substring(0, 7);
-  let formatted = '';
-  if (val.length > 0) formatted = val.substring(0, 2);
-  if (val.length > 2) formatted += ' ' + val.substring(2, 7);
-  input.value = formatted;
-}
-
-// --- УМНЫЙ ПАРСЕР И ВСТАВКА СПИСКА ООН (ПУНКТ 5, 14) ---
 function parseAndValidateUNString(rawInput) {
-  // Выделяем все 4-значные или меньшие блоки цифр (ООН 0005, UN 0007, 29, 0030...)
   const matches = rawInput.match(/\d+/g) || [];
   const results = [];
   const errors = [];
@@ -233,7 +248,6 @@ function parseAndValidateUNString(rawInput) {
   return { results, errors };
 }
 
-// --- РАСЧЕТ СРОКОВ (30 - 15 - 0) ---
 function calculateStatus(endDateStr) {
   if (!endDateStr) return { days: 0, status: 'expired', label: 'Не указан', cssClass: 'danger-red' };
   const iso = date1CToIso(endDateStr);
@@ -273,14 +287,12 @@ function checkAllAlerts() {
       triggerInstantAlert('Внимание: ДОПОГ Спецразрешение', `СР № ${p.number} (Маршрут № ${p.routeNumber}): ${s.label}`);
     }
   });
-
   appData.vehicles.forEach(v => {
     const s = calculateStatus(v.dopog_expiry_date);
     if (s.status === 'critical' || s.status === 'expired') {
       triggerInstantAlert('Внимание: Допуск ТС', `Авто ${v.plate}: допуск ДОПОГ ${s.label}`);
     }
   });
-
   if (currentUser && currentUser.consultant_cert_end) {
     const s = calculateStatus(currentUser.consultant_cert_end);
     if (s.status === 'critical' || s.status === 'expired') {
@@ -303,7 +315,7 @@ async function loadServerData() {
 
     renderAll();
   } catch (err) {
-    showToast('Ошибка загрузки данных с сервера', 'error');
+    showToast('Ошибка загрузки данных', 'error');
   }
 }
 
@@ -327,7 +339,8 @@ async function loadUserProfile() {
   } catch (e) {}
 }
 
-// --- ОТРИСОВКА: 1. РЕЕСТР МАРШРУТОВ И АРХИВ (ПУНКТ 18) ---
+// --- РЕЕСТР МАРШРУТОВ И АРХИВ ---
+
 function setRouteArchiveView(showArchive) {
   appData.showingArchivedRoutes = showArchive;
   document.getElementById('btnRoutesTabActive').classList.toggle('active', !showArchive);
@@ -399,11 +412,11 @@ function renderRoutes() {
     const permitsLabel = permitsCount > 0 ? `<span class="brand-badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;">${permitsCount} СР</span>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Нет СР</span>';
 
     const archiveBtn = r.is_archived
-      ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); restoreRoute('${r.id}')" title="Восстановить из архива">♻️ Восстановить</button>`
-      : `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); archiveRoute('${r.id}')" title="Переместить в архив">📦 В архив</button>`;
+      ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); restoreRoute('${r.id}')">♻️ Восстановить</button>`
+      : `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); archiveRoute('${r.id}')">📦 В архив</button>`;
 
     return `
-      <tr class="clickable-row" onclick="handleRowClick(event, 'route', '${r.id}')" title="Нажмите для открытия карточки маршрута">
+      <tr class="clickable-row" onclick="handleRowClick(event, 'route', '${r.id}')" title="Открыть карточку маршрута">
         <td><span class="status-badge ${s.cssClass}">${s.label}</span></td>
         <td><strong style="font-size:1.05rem;color:var(--primary);">№ ${r.route_number}</strong></td>
         <td>
@@ -431,12 +444,46 @@ function renderRoutes() {
 }
 
 // Карточка детального просмотра маршрута
-function openRouteDetailModal(routeId) {
+async function openRouteDetailModal(routeId) {
   const r = appData.routes.find(item => item.id === routeId);
   if (!r) return;
 
   const s = getRouteAggregateStatus(r);
   document.getElementById('routeDetailTitle').textContent = `Маршрут № ${r.route_number}: ${r.name}`;
+
+  // Загружаем сохраненные заявления в УГАДН для этого маршрута
+  let ugadnApps = [];
+  try {
+    const res = await apiRequest(`/api/ugadn/route/${routeId}`);
+    if (res && res.ok) {
+      ugadnApps = (await res.json()).applications || [];
+    }
+  } catch (e) {}
+
+  let ugadnListHtml = '';
+  if (ugadnApps.length === 0) {
+    ugadnListHtml = `<div style="padding:10px;text-align:center;color:var(--text-muted);font-size:0.85rem;">Заявлений еще не создано. Нажмите кнопку ниже, чтобы подготовить заявление на автомобиль.</div>`;
+  } else {
+    ugadnListHtml = `
+      <table style="width:100%;font-size:0.85rem;margin-top:6px;">
+        <thead><tr style="background:#e0f2fe;"><th>Автомобиль</th><th>Госпошлина</th><th>Срок</th><th>Действия</th></tr></thead>
+        <tbody>
+          ${ugadnApps.map(a => `
+            <tr>
+              <td><strong>${escapeHtml(a.plate)}</strong><br><small style="color:var(--text-muted);">${escapeHtml(a.brand)}</small></td>
+              <td>${escapeHtml(a.payment_requisites || '—')}</td>
+              <td>${a.period_start ? `${isoToDate1C(a.period_start)} – ${isoToDate1C(a.period_end)}` : 'По регламенту'}</td>
+              <td style="text-align:right;white-space:nowrap;">
+                <button class="btn btn-secondary btn-sm" onclick="openUgadnPreparationModal('${r.id}', '${a.id}')" title="Открыть / Изменить">✏️ Открыть</button>
+                <button class="btn btn-primary btn-sm" style="background:#10b981;" onclick="convertUgadnToPermit('${a.id}')" title="Оформить спецразрешение на основании заявления">✅ Получено СР</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteUgadnApp('${a.id}', '${r.id}')">🗑️</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
 
   const permits = r.permits || [];
   let permitsTableHtml = '';
@@ -460,7 +507,6 @@ function openRouteDetailModal(routeId) {
           ${permits.map(p => {
             const pStat = calculateStatus(p.end_date);
             const files = p.files || [];
-            // Пункт 17: вывод "Скачать" вместо абракадабры
             const filesHtml = files.map(f => `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(f.path)}" target="_blank" download="${escapeHtml(f.name)}">📄 Скачать</a>`).join(' ');
             return `
               <tr class="clickable-row" onclick="closeModal('routeDetailModal', true); openPermitDetailModal('${p.id}')" title="Открыть СР">
@@ -485,6 +531,7 @@ function openRouteDetailModal(routeId) {
     <div style="background:var(--bg-main);padding:1.25rem;border-radius:8px;border:1px solid var(--border-color);margin-bottom:1.25rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <span class="status-badge ${s.cssClass}">${s.label}</span>
+        <!-- Пункт 5: копирует ТОЛЬКО текст подробного маршрута -->
         <button class="btn btn-secondary btn-sm" onclick="copyPlainRoute('${r.id}')">📋 Скопировать весь маршрут</button>
       </div>
 
@@ -494,22 +541,23 @@ function openRouteDetailModal(routeId) {
       <div><strong>Подробный маршрут:</strong> ${escapeHtml(r.route_detail || 'Не детализирован')}</div>
     </div>
 
-    <!-- Модуль подготовки пакета документов в УГАДН (Пункт 20) -->
+    <!-- Заявления в Ространснадзор (УГАДН) -->
     <div style="background:#eff6ff;padding:1.25rem;border-radius:8px;border:1px solid #bfdbfe;margin-bottom:1.5rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div>
-          <h4 style="font-weight:700;color:#1e40af;margin-bottom:4px;">📦 Подготовка пакета документов в Ространснадзор</h4>
-          <p style="font-size:0.82rem;color:#3b82f6;">Автогенерация официального заявления по форме Минтранса РФ, Приложений №1 и №2 и печать комплекта из 4 документов</p>
+          <h4 style="font-weight:700;color:#1e40af;">📦 Заявления на спецразрешения в Ространснадзор (${ugadnApps.length})</h4>
+          <p style="font-size:0.8rem;color:#3b82f6;">Подготовка пакета по форме Минтранса РФ, сохранение черновиков и перевод в статус полученного СР</p>
         </div>
         <button class="btn btn-primary btn-sm" onclick="openUgadnPreparationModal('${r.id}')">
-          📝 Подготовить пакет документов
+          + Подготовить заявление на авто
         </button>
       </div>
+      ${ugadnListHtml}
     </div>
 
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h4 style="font-weight:700;">Специальные разрешения маршрута (${permits.length})</h4>
+        <h4 style="font-weight:700;">Действующие специальные разрешения (${permits.length})</h4>
         <button class="btn btn-primary btn-sm" onclick="closeModal('routeDetailModal', true); openAddPermitForRoute('${r.id}')">+ Выпустить СР на авто</button>
       </div>
       <div style="border:1px solid var(--border-color);border-radius:6px;overflow:hidden;">
@@ -521,7 +569,40 @@ function openRouteDetailModal(routeId) {
   openModal('routeDetailModal');
 }
 
-// Карточка детального просмотра СР
+// Пункт 5: копирует ТОЛЬКО текст поля «Подробный маршрут»
+function copyPlainRoute(routeId) {
+  const r = appData.routes.find(item => item.id === routeId);
+  if (!r || !r.route_detail) return showToast('Подробный маршрут не заполнен', 'warning');
+  copyTextToClipboard(r.route_detail);
+}
+
+function copyPermitRoute(permitId) {
+  const p = appData.permits.find(item => item.id === permitId);
+  if (!p || !p.route_detail) return showToast('Подробный маршрут не заполнен', 'warning');
+  copyTextToClipboard(p.route_detail);
+}
+
+function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('✓ Текст подробного маршрута скопирован!', 'success');
+    }).catch(() => fallbackCopy(text));
+  } else fallbackCopy(text);
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showToast('✓ Текст подробного маршрута скопирован!', 'success');
+}
+
+// Карточка СР
 function openPermitDetailModal(permitId) {
   const p = appData.permits.find(item => item.id === permitId);
   if (!p) return;
@@ -530,7 +611,6 @@ function openPermitDetailModal(permitId) {
   document.getElementById('permitDetailTitle').textContent = `Специальное разрешение № ${p.number}`;
 
   const files = p.files || [];
-  // Пункт 17: вывод "Скачать"
   const filesHtml = files.length > 0
     ? files.map(f => `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(f.path)}" target="_blank" download="${escapeHtml(f.name)}">📄 Скачать</a>`).join(' ')
     : '<span style="color:var(--text-muted);font-size:0.85rem;">Сканы не прикреплены</span>';
@@ -588,51 +668,10 @@ function openPermitDetailModal(permitId) {
   openModal('permitDetailModal');
 }
 
-// Надежное копирование маршрутов (Пункт 7)
-function copyPlainRoute(routeId) {
-  const r = appData.routes.find(item => item.id === routeId);
-  if (!r) return;
-  const text = `Маршрут № ${r.route_number}: ${(r.pointsLoad || []).join('; ')} -> ${(r.pointsUnload || []).join('; ')}. ${r.route_detail || ''}`;
-  copyTextToClipboard(text);
-}
-
-function copyPermitRoute(permitId) {
-  const p = appData.permits.find(item => item.id === permitId);
-  if (!p) return;
-  const text = `Маршрут № ${p.routeNumber} (${p.number}): ${(p.pointsLoad || []).join('; ')} -> ${(p.pointsUnload || []).join('; ')}. ${p.route_detail || ''}`;
-  copyTextToClipboard(text);
-}
-
-function copyTextToClipboard(text) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('✓ Текст маршрута скопирован в буфер обмена!', 'success');
-    }).catch(() => fallbackCopy(text));
-  } else {
-    fallbackCopy(text);
-  }
-}
-
-function fallbackCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position = 'fixed';
-  ta.style.left = '-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
-  showToast('✓ Текст маршрута скопирован в буфер!', 'success');
-}
-
-// --- ОТРИСОВКА: 2. РЕЕСТР СПЕЦИАЛЬНЫХ РАЗРЕШЕНИЙ (СР) ---
+// --- РЕЕСТР СПЕЦИАЛЬНЫХ РАЗРЕШЕНИЙ (СР) ---
 function sortPermits(field) {
-  if (permitSortField === field) {
-    permitSortAsc = !permitSortAsc;
-  } else {
-    permitSortField = field;
-    permitSortAsc = true;
-  }
+  if (permitSortField === field) permitSortAsc = !permitSortAsc;
+  else { permitSortField = field; permitSortAsc = true; }
   renderPermits();
 }
 
@@ -688,7 +727,6 @@ function renderPermits() {
   tbody.innerHTML = filtered.map(p => {
     const s = calculateStatus(p.end_date);
     const files = p.files || [];
-    // Пункт 17: "Скачать"
     const filesHtml = files.length > 0
       ? files.map(f => `<a class="file-chip" href="/api/files/permits/${encodeURIComponent(f.path)}" target="_blank" download="${escapeHtml(f.name)}">📄 Скачать</a>`).join(' ')
       : '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
@@ -725,7 +763,7 @@ function renderPermits() {
   }).join('');
 }
 
-// --- ОТРИСОВКА: 3. РЕЕСТР АВТОМОБИЛЕЙ (ПУНКТ 10) ---
+// --- РЕЕСТР АВТОМОБИЛЕЙ (ПУНКТ 4: СТС С КНОПКОЙ "СКАЧАТЬ") ---
 function renderVehicles() {
   const tbody = document.getElementById('vehiclesTableBody');
   const search = (document.getElementById('vehicleSearchInput')?.value || '').trim().toLowerCase();
@@ -768,14 +806,15 @@ function renderVehicles() {
     const s = calculateStatus(v.dopog_expiry_date);
     const activePermitsCount = appData.permits.filter(p => p.vehicle_id === v.id).length;
 
+    // Пункт 4: СТС отображается как кнопка Скачать без абракадабры
     let stsHtml = v.sts_number ? `<strong>${escapeHtml(v.sts_number)}</strong>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Не указано</span>';
     if (v.sts_file_path) {
-      stsHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" target="_blank" download="СТС_${escapeHtml(v.plate)}.pdf">📄 СТС</a>`;
+      stsHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" target="_blank" download="СТС_${escapeHtml(v.plate)}.pdf">📄 Скачать</a>`;
     }
 
     let dopogHtml = v.dopog_number ? `<strong>${escapeHtml(v.dopog_number)}</strong>` : '<span style="color:var(--text-muted);font-size:0.75rem;">Не оформлен</span>';
     if (v.dopog_file_path) {
-      dopogHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" target="_blank" download="ДОПОГ_${escapeHtml(v.plate)}.pdf">📄 Допуск ДОПОГ</a>`;
+      dopogHtml += `<br><a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" target="_blank" download="ДОПОГ_${escapeHtml(v.plate)}.pdf">📄 Скачать</a>`;
     }
 
     return `
@@ -822,7 +861,7 @@ function openVehicleCard(id) {
         <div style="font-size:0.85rem;margin-bottom:4px;">VIN: <strong>${escapeHtml(v.vin || 'Не указан')}</strong></div>
         <div>Номер СТС: <strong>${escapeHtml(v.sts_number || 'Не указан')}</strong></div>
         <div style="margin-top:8px;">
-          ${v.sts_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" target="_blank" download="СТС_${escapeHtml(v.plate)}.pdf">📄 Скачать файл СТС</a>` : '<span style="color:var(--text-muted);font-size:0.8rem;">Файл СТС не загружен</span>'}
+          ${v.sts_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" target="_blank" download="СТС_${escapeHtml(v.plate)}.pdf">📄 Скачать</a>` : '<span style="color:var(--text-muted);font-size:0.8rem;">Файл СТС не загружен</span>'}
         </div>
       </div>
 
@@ -832,7 +871,7 @@ function openVehicleCard(id) {
         <div style="margin-bottom:6px;"><span class="status-badge ${s.cssClass}">${s.label}</span></div>
         <div style="font-size:0.85rem;color:var(--text-muted);">Срок окончания действия: <strong>${isoToDate1C(v.dopog_expiry_date)}</strong></div>
         <div style="margin-top:8px;">
-          ${v.dopog_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" target="_blank" download="ДОПОГ_${escapeHtml(v.plate)}.pdf">📄 Скачать файл допуска ДОПОГ</a>` : '<span style="color:var(--text-muted);font-size:0.8rem;">Файл допуска не загружен</span>'}
+          ${v.dopog_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" target="_blank" download="ДОПОГ_${escapeHtml(v.plate)}.pdf">📄 Скачать</a>` : '<span style="color:var(--text-muted);font-size:0.8rem;">Файл допуска не загружен</span>'}
         </div>
       </div>
     </div>
@@ -861,38 +900,6 @@ function openVehicleCard(id) {
   openModal('vehicleDetailModal');
 }
 
-// --- ОТРИСОВКА: 5. АДМИН-ПАНЕЛЬ (ПУНКТ 6) ---
-async function loadAdminData() {
-  try {
-    const res = await apiRequest('/api/admin/overview');
-    if (!res || !res.ok) return;
-    const { stats, companies } = await res.json();
-
-    document.getElementById('adminTotalCompanies').textContent = stats.totalCompanies;
-    document.getElementById('adminTotalUsers').textContent = stats.totalUsers;
-    document.getElementById('adminTotalVehicles').textContent = stats.totalVehicles;
-    document.getElementById('adminTotalRoutes').textContent = stats.totalRoutes;
-
-    const tbody = document.getElementById('adminCompaniesTableBody');
-    tbody.innerHTML = companies.map(c => `
-      <tr>
-        <td style="max-width:240px;"><strong>${escapeHtml(c.name)}</strong></td>
-        <td><code>${escapeHtml(c.inn || '—')}</code></td>
-        <td><code>${escapeHtml(c.ogrn || '—')}</code></td>
-        <td>${escapeHtml(c.head_name || '—')}<br><small style="color:var(--text-muted);">${escapeHtml(c.head_position || '')}</small></td>
-        <td>${escapeHtml(c.contact_person || '—')}<br><small style="color:var(--text-muted);">${escapeHtml(c.admin_email || '')}</small></td>
-        <td>${escapeHtml(c.phone || c.contact_phone || '—')}</td>
-        <td>
-          <span class="brand-badge" style="background:#e0f2fe;color:#0369a1;">${c.vehicle_count} ТС</span>
-          <span class="brand-badge" style="background:#dcfce7;color:#166534;">${c.route_count} марш.</span>
-          <span class="brand-badge" style="background:#fef3c7;color:#92400e;">${c.permit_count} СР</span>
-        </td>
-        <td style="font-size:0.8rem;color:var(--text-muted);">${isoToDate1C(c.created_at ? c.created_at.split(' ')[0] : '')}</td>
-      </tr>
-    `).join('');
-  } catch (err) {}
-}
-
 // --- УПРАВЛЕНИЕ МАРШРУТАМИ ---
 function setupTagInput(containerId, inputId, tagsArray, isUn = false) {
   const container = document.getElementById(containerId);
@@ -913,17 +920,13 @@ function setupTagInput(containerId, inputId, tagsArray, isUn = false) {
     });
   }
 
-  // Обработка умной вставки ООН (Пункт 5, 14)
   input.onpaste = (e) => {
     if (!isUn) return;
     e.preventDefault();
     const pasted = (e.clipboardData || window.clipboardData).getData('text');
     const { results, errors } = parseAndValidateUNString(pasted);
 
-    if (errors.length > 0) {
-      showToast(errors[0], 'error');
-    }
-
+    if (errors.length > 0) showToast(errors[0], 'error');
     results.forEach(code => {
       if (!tagsArray.includes(code)) tagsArray.push(code);
     });
@@ -1002,7 +1005,7 @@ function editRoute(id) {
 }
 
 async function archiveRoute(id) {
-  if (!confirm('Переместить маршрут в архив? Маршрут перестанет отображаться в активных.')) return;
+  if (!confirm('Переместить маршрут в архив?')) return;
   const res = await apiRequest(`/api/routes/${id}/archive`, {
     method: 'PATCH',
     body: JSON.stringify({ archive: true })
@@ -1024,7 +1027,7 @@ async function restoreRoute(id) {
   }
 }
 
-// --- УПРАВЛЕНИЕ СПЕЦРАЗРЕШЕНИЯМИ (СР) ---
+// --- СПЕЦРАЗРЕШЕНИЯ (СР) ---
 function populatePermitModalSelects(selectedRouteId = '', selectedVehicleId = '') {
   const rSel = document.getElementById('permitRouteSelect');
   const vSel = document.getElementById('permitVehicleSelect');
@@ -1077,7 +1080,7 @@ function editPermit(id) {
   const files = p.files || [];
   const listEl = document.getElementById('permitCurrentFilesList');
   if (files.length > 0) {
-    listEl.innerHTML = files.map(f => `<span class="file-chip">📄 ${escapeHtml(f.name)}</span>`).join(' ');
+    listEl.innerHTML = files.map(f => `<span class="file-chip">📄 Скачать</span>`).join(' ');
   } else {
     listEl.innerHTML = '';
   }
@@ -1094,7 +1097,7 @@ async function deletePermit(id) {
   }
 }
 
-// --- УПРАВЛЕНИЕ АВТОМОБИЛЯМИ ---
+// --- АВТОМОБИЛИ ---
 function openAddVehicleModal() {
   document.getElementById('vehicleForm').reset();
   document.getElementById('vehicleEditId').value = '';
@@ -1119,10 +1122,10 @@ function editVehicle(id) {
   document.getElementById('vehicleDopogExpiryDate').value = isoToDate1C(v.dopog_expiry_date);
 
   const stsCur = document.getElementById('vehicleStsCurrentFile');
-  stsCur.innerHTML = v.sts_file_path ? `<span class="file-chip">📄 ${escapeHtml(v.sts_file_name || 'СТС')}</span>` : '';
+  stsCur.innerHTML = v.sts_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" target="_blank" download="СТС_${escapeHtml(v.plate)}.pdf">📄 Скачать</a>` : '';
 
   const dopCur = document.getElementById('vehicleDopogCurrentFile');
-  dopCur.innerHTML = v.dopog_file_path ? `<span class="file-chip">📄 ${escapeHtml(v.dopog_file_name || 'ДОПОГ')}</span>` : '';
+  dopCur.innerHTML = v.dopog_file_path ? `<a class="file-chip" href="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" target="_blank" download="ДОПОГ_${escapeHtml(v.plate)}.pdf">📄 Скачать</a>` : '';
 
   openModal('vehicleModal');
 }
@@ -1151,6 +1154,7 @@ function openProfileModal() {
   document.getElementById('profHeadName').value = currentUser.head_name || '';
 
   document.getElementById('profFullName').value = currentUser.full_name || '';
+  document.getElementById('profConsultantPosition').value = currentUser.consultant_position || 'Консультант по безопасности перевозки опасных грузов';
   document.getElementById('profPhone').value = currentUser.phone || '';
   document.getElementById('profCertNum').value = currentUser.consultant_cert_number || '';
   document.getElementById('profCertStart').value = isoToDate1C(currentUser.consultant_cert_start || '');
@@ -1159,15 +1163,17 @@ function openProfileModal() {
   openModal('profileModal');
 }
 
-// --- ПОДГОТОВКА ДОКУМЕНТОВ В УГАДН (ПУНКТ 20) ---
+// --- ПОДГОТОВКА ДОКУМЕНТОВ В УГАДН (ПУНКТ 6, 8, 20) ---
 let currentUgadnContext = null;
 
-function openUgadnPreparationModal(routeId) {
+async function openUgadnPreparationModal(routeId, appId = null) {
   const r = appData.routes.find(item => item.id === routeId);
   if (!r) return;
 
-  currentUgadnContext = { route: r };
+  document.getElementById('ugadnForm').reset();
   document.getElementById('ugadnRouteId').value = routeId;
+  document.getElementById('ugadnEditId').value = appId || '';
+  document.getElementById('ugadnPaymentCurrentFile').innerHTML = '';
 
   const vSel = document.getElementById('ugadnVehicleSelect');
   vSel.innerHTML = '<option value="">-- Выберите автомобиль из автопарка --</option>';
@@ -1178,7 +1184,99 @@ function openUgadnPreparationModal(routeId) {
     vSel.appendChild(opt);
   });
 
+  if (appId) {
+    document.getElementById('ugadnModalTitle').textContent = 'Редактирование заявления в УГАДН';
+    try {
+      const res = await apiRequest(`/api/ugadn/route/${routeId}`);
+      if (res && res.ok) {
+        const apps = (await res.json()).applications || [];
+        const targetApp = apps.find(a => a.id === appId);
+        if (targetApp) {
+          vSel.value = targetApp.vehicle_id;
+          document.getElementById('ugadnTarget').value = targetApp.ugadn_target || 'в МТУ Ространснадзора по СФО';
+          document.getElementById('ugadnPaymentReqs').value = targetApp.payment_requisites || '';
+          document.getElementById('ugadnPeriodStart').value = isoToDate1C(targetApp.period_start);
+          document.getElementById('ugadnPeriodEnd').value = isoToDate1C(targetApp.period_end);
+          if (targetApp.payment_file_path) {
+            document.getElementById('ugadnPaymentCurrentFile').innerHTML = `<small style="color:var(--text-muted);">Прикреплен файл: <a class="file-chip" href="/api/files/payments/${encodeURIComponent(targetApp.payment_file_path)}" target="_blank" download="${escapeHtml(targetApp.payment_file_name || 'платежка.pdf')}">📄 Скачать</a></small>`;
+          }
+        }
+      }
+    } catch (e) {}
+  } else {
+    document.getElementById('ugadnModalTitle').textContent = 'Подготовка документов в УГАДН (Ространснадзор)';
+    document.getElementById('ugadnTarget').value = 'в МТУ Ространснадзора по СФО';
+  }
+
+  currentUgadnContext = { route: r };
   openModal('ugadnModal');
+}
+
+// Авторасчет даты окончания заявления +1 год - 1 день
+document.getElementById('ugadnPeriodStart').addEventListener('change', (e) => {
+  const endInput = document.getElementById('ugadnPeriodEnd');
+  if (e.target.value) {
+    endInput.value = calculateEndDate(e.target.value);
+  }
+});
+
+// Сохранение заявления (черновика)
+document.getElementById('ugadnForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const vId = document.getElementById('ugadnVehicleSelect').value;
+  if (!vId) return showToast('Выберите автомобиль', 'warning');
+
+  const formData = new FormData();
+  formData.append('id', document.getElementById('ugadnEditId').value);
+  formData.append('routeId', document.getElementById('ugadnRouteId').value);
+  formData.append('vehicleId', vId);
+  formData.append('ugadnTarget', document.getElementById('ugadnTarget').value);
+  formData.append('paymentRequisites', document.getElementById('ugadnPaymentReqs').value);
+  formData.append('periodStart', date1CToIso(document.getElementById('ugadnPeriodStart').value));
+  formData.append('periodEnd', date1CToIso(document.getElementById('ugadnPeriodEnd').value));
+
+  const fInput = document.getElementById('ugadnPaymentFile');
+  if (fInput.files.length > 0) formData.append('paymentFile', fInput.files[0]);
+
+  const res = await apiRequest('/api/ugadn/save', { method: 'POST', body: formData });
+  if (res && res.ok) {
+    showToast('✓ Заявление успешно сохранено!', 'success');
+    closeModal('ugadnModal', true);
+    openRouteDetailModal(document.getElementById('ugadnRouteId').value);
+  }
+};
+
+async function deleteUgadnApp(appId, routeId) {
+  if (!confirm('Удалить заявление?')) return;
+  const res = await apiRequest(`/api/ugadn/${appId}`, { method: 'DELETE' });
+  if (res && res.ok) {
+    showToast('Заявление удалено', 'success');
+    openRouteDetailModal(routeId);
+  }
+}
+
+// Кнопка "Получено СР" -> перевод заявления в спецразрешение
+async function convertUgadnToPermit(appId) {
+  closeModal('routeDetailModal', true);
+  try {
+    const rId = currentUgadnContext?.route?.id;
+    let targetApp = null;
+    if (rId) {
+      const res = await apiRequest(`/api/ugadn/route/${rId}`);
+      if (res && res.ok) {
+        targetApp = (await res.json()).applications?.find(a => a.id === appId);
+      }
+    }
+
+    openAddPermitModal();
+    if (targetApp) {
+      populatePermitModalSelects(targetApp.route_id, targetApp.vehicle_id);
+      if (targetApp.period_start) document.getElementById('permitStartDate').value = isoToDate1C(targetApp.period_start);
+      if (targetApp.period_end) document.getElementById('permitEndDate').value = isoToDate1C(targetApp.period_end);
+      document.getElementById('permitNumber').focus();
+      showToast('Заполните номер полученного СР и сохраните', 'info');
+    }
+  } catch (e) {}
 }
 
 function getUgadnPayload() {
@@ -1186,7 +1284,7 @@ function getUgadnPayload() {
   const vId = document.getElementById('ugadnVehicleSelect').value;
   const v = appData.vehicles.find(item => item.id === vId);
   if (!v) {
-    showToast('Выберите автомобиль для заявления', 'warning');
+    showToast('Выберите автомобиль для формирования заявления', 'warning');
     return null;
   }
 
@@ -1198,8 +1296,8 @@ function getUgadnPayload() {
   return { r, v, paymentReqs, ugadnTarget, periodStart, periodEnd };
 }
 
-// Генерация HTML Заявления на основе присланного шаблона RTF
-function generateApplicationHtmlContent(payload) {
+// Генерация форматированного документа Заявления (полное соответствие образцу RTF, Пункт 8)
+function generateApplicationWordHtml(payload) {
   const { r, v, paymentReqs, ugadnTarget, periodStart, periodEnd } = payload;
   const comp = currentUser || {};
 
@@ -1210,133 +1308,166 @@ function generateApplicationHtmlContent(payload) {
     const pg = (good && good.pg !== '-') ? good.pg : '';
     return `
       <tr>
-        <td style="border:1px solid #000;padding:4px;text-align:center;">${idx + 1}</td>
-        <td style="border:1px solid #000;padding:4px;text-align:center;">${code}</td>
-        <td style="border:1px solid #000;padding:4px;">${name}</td>
-        <td style="border:1px solid #000;padding:4px;text-align:center;">${cls}</td>
-        <td style="border:1px solid #000;padding:4px;text-align:center;">${pg}</td>
+        <td style="border:1pt solid black;padding:3pt 4pt;text-align:center;font-size:10pt;">${idx + 1}</td>
+        <td style="border:1pt solid black;padding:3pt 4pt;text-align:center;font-size:10pt;font-weight:bold;">${code}</td>
+        <td style="border:1pt solid black;padding:3pt 4pt;font-size:10pt;">${name}</td>
+        <td style="border:1pt solid black;padding:3pt 4pt;text-align:center;font-size:10pt;">${cls}</td>
+        <td style="border:1pt solid black;padding:3pt 4pt;text-align:center;font-size:10pt;">${pg}</td>
       </tr>
     `;
   }).join('');
 
-  const loadPointsText = (r.pointsLoad || []).join('<br>');
-  const unloadPointsText = (r.pointsUnload || []).join('<br>');
+  const loadPointsText = (r.pointsLoad || []).map(p => `• ${escapeHtml(p)}`).join('<br>');
+  const unloadPointsText = (r.pointsUnload || []).map(p => `• ${escapeHtml(p)}`).join('<br>');
 
   return `
-    <div style="font-family:'Times New Roman', serif;font-size:12pt;line-height:1.25;color:#000;padding:20mm 15mm;">
-      <div style="text-align:right;margin-bottom:25px;">
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>Заявление на СР</title>
+      <style>
+        @page Section1 { size: 210mm 297mm; margin: 20mm 15mm 20mm 20mm; mso-header-margin: 10mm; mso-footer-margin: 10mm; }
+        div.Section1 { page: Section1; }
+        body { font-family: "Times New Roman", Times, serif; font-size: 11pt; line-height: 1.15; color: #000; }
+        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; table-layout: fixed; }
+        td, th { border: 1pt solid black; padding: 4pt 5pt; font-family: "Times New Roman", Times, serif; }
+        .no-border td { border: none !important; padding: 2pt 0; }
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .justify { text-align: justify; }
+        .small-hint { font-size: 8pt; color: #333; text-align: center; }
+      </style>
+    </head>
+    <body>
+    <div class="Section1">
+      <div class="right" style="margin-bottom: 25pt;">
         <strong>${escapeHtml(ugadnTarget)}</strong>
       </div>
 
-      <div style="text-align:center;font-weight:bold;font-size:14pt;margin-bottom:15px;">
+      <div class="center" style="font-weight: bold; font-size: 13pt; margin-bottom: 12pt;">
         ЗАЯВЛЕНИЕ<br>
-        <span style="font-size:11pt;font-weight:normal;">о получении специального разрешения на движение по автомобильным дорогам транспортного средства, осуществляющего перевозку опасных грузов</span>
+        <span style="font-size: 10pt; font-weight: normal;">о получении специального разрешения на движение по автомобильным дорогам транспортного средства, осуществляющего перевозку опасных грузов</span>
       </div>
 
-      <div style="margin-bottom:12px;text-align:justify;">
-        <strong>${escapeHtml(comp.company_name || '')}</strong><br>
-        <small style="font-size:8pt;color:#555;">(наименование юридического лица; фамилия, имя, отчество (при наличии) для физического лица или индивидуального предпринимателя)</small>
+      <div style="margin-bottom: 8pt; text-align: justify; text-decoration: underline;">
+        <strong>${escapeHtml(comp.company_name || '')}</strong>
+      </div>
+      <div class="small-hint" style="margin-top: -6pt; margin-bottom: 10pt;">
+        (наименование юридического лица; фамилия, имя, отчество (при наличии) для физического лица или индивидуального предпринимателя)
       </div>
 
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <table style="margin-bottom: 10pt;">
         <tr>
-          <td style="border:1px solid #000;padding:5px;width:35%;font-size:10pt;">ИНН, ОГРН/ОГРНИП владельца транспортного средства</td>
-          <td style="border:1px solid #000;padding:5px;width:30%;font-size:10pt;">ИНН: <strong>${escapeHtml(comp.company_inn || '')}</strong></td>
-          <td style="border:1px solid #000;padding:5px;width:35%;font-size:10pt;">ОГРН/ОГРНИП: <strong>${escapeHtml(comp.company_ogrn || '')}</strong></td>
+          <td style="width: 38%; font-size: 10pt;">ИНН, ОГРН/ОГРНИП владельца транспортного средства</td>
+          <td style="width: 31%; font-size: 10pt;">ИНН:<br><strong>${escapeHtml(comp.company_inn || '')}</strong></td>
+          <td style="width: 31%; font-size: 10pt;">ОГРН/ОГРНИП:<br><strong>${escapeHtml(comp.company_ogrn || '')}</strong></td>
         </tr>
       </table>
 
-      <div style="margin-bottom:8px;">просит оформить специальное разрешение на движение по автомобильным дорогам транспортного средства:</div>
+      <div style="margin-bottom: 6pt;">просит оформить специальное разрешение на движение по автомобильным дорогам транспортного средства,</div>
 
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <table style="margin-bottom: 10pt;">
         <tr>
-          <td style="border:1px solid #000;padding:5px;width:65%;font-size:10pt;font-weight:bold;">
+          <td style="width: 65%; font-size: 9.5pt; font-weight: bold;">
             Тип, марка, модель, идентификационный номер транспортного средства (основного компонента)
           </td>
-          <td style="border:1px solid #000;padding:5px;width:35%;font-size:10pt;font-weight:bold;text-align:center;">
-            Государственный регистрационный знак ТС
+          <td style="width: 35%; font-size: 9.5pt; font-weight: bold; text-align: center;">
+            Государственный регистрационный знак транспортного средства
           </td>
         </tr>
         <tr>
-          <td style="border:1px solid #000;padding:5px;font-size:10pt;">
+          <td style="font-size: 10pt;">
             ${escapeHtml(v.vehicle_type || 'Грузовой фургон')}<br>
             ${escapeHtml(v.brand)}<br>
-            VIN: ${escapeHtml(v.vin || '—')}
+            ${escapeHtml(v.vin || '—')}
           </td>
-          <td style="border:1px solid #000;padding:5px;font-size:12pt;font-weight:bold;text-align:center;">
+          <td style="font-size: 12pt; font-weight: bold; text-align: center;">
             ${escapeHtml(v.plate)}
           </td>
         </tr>
       </table>
 
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <table style="margin-bottom: 10pt;">
         <tr>
-          <td style="border:1px solid #000;padding:5px;width:65%;font-size:10pt;">Информация о способе оформления специального разрешения</td>
-          <td style="border:1px solid #000;padding:5px;width:17%;font-size:10pt;text-align:center;">на бумажном носителе<br>—</td>
-          <td style="border:1px solid #000;padding:5px;width:18%;font-size:10pt;text-align:center;">в виде электронного документа<br><strong>V</strong></td>
+          <td style="width: 65%; font-size: 9pt;">Информация о способе оформления специального разрешения (на бумажном носителе или в виде электронного документа), а также о способе получения уведомлений</td>
+          <td style="width: 17.5%; font-size: 9.5pt; text-align: center;">на бумажном носителе<br>—</td>
+          <td style="width: 17.5%; font-size: 9.5pt; text-align: center;">в виде электронного документа<br><strong>V</strong></td>
         </tr>
       </table>
 
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <table style="margin-bottom: 10pt;">
         <tr>
-          <td style="border:1px solid #000;padding:5px;font-size:10pt;">
+          <td style="font-size: 10pt;">
             Сведения о консультанте по вопросам безопасности перевозок опасных грузов:<br>
-            <strong>${escapeHtml(comp.full_name || '')}, № ${escapeHtml(comp.consultant_cert_number || '')}</strong><br>
-            <small style="font-size:8pt;color:#555;">(фамилия, имя, отчество (при наличии), серия и номер свидетельства консультанта)</small>
+            <strong>${escapeHtml(comp.full_name || '')}, № ${escapeHtml(comp.consultant_cert_number || '')}</strong>
+            <div class="small-hint" style="text-align: left; margin-top: 2pt;">(фамилия, имя, отчество (при наличии), серия и номер свидетельства консультанта)</div>
           </td>
         </tr>
       </table>
 
-      <div style="margin-bottom:8px;">
+      <div style="margin-bottom: 6pt;">
         осуществляющего перевозку опасных грузов (согласно приложению № 1), по маршруту <strong>№ ${r.route_number}</strong> (согласно приложению № 2):
       </div>
 
-      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <table style="margin-bottom: 10pt;">
         <tr>
-          <td style="border:1px solid #000;padding:5px;width:50%;font-size:10pt;">Предполагаемый срок перевозки: с <strong>${periodStart || '—'}</strong></td>
-          <td style="border:1px solid #000;padding:5px;width:50%;font-size:10pt;">по: <strong>${periodEnd || '—'}</strong></td>
+          <td colspan="2" style="font-size: 10pt;">Предполагаемый срок осуществления перевозки опасного груза</td>
+        </tr>
+        <tr>
+          <td style="width: 50%; font-size: 10pt;">с: <strong>${periodStart || '—'}</strong></td>
+          <td style="width: 50%; font-size: 10pt;">по: <strong>${periodEnd || '—'}</strong></td>
         </tr>
       </table>
 
-      <div style="font-size:10pt;margin-bottom:6px;">
-        Адрес места нахождения: <strong>${escapeHtml(comp.legal_address || '')}</strong>
+      <div style="font-size: 10pt; margin-bottom: 4pt;">
+        Адрес в пределах места нахождения (для юридических лиц), адрес регистрации по месту жительства:
       </div>
-      <div style="font-size:10pt;margin-bottom:10px;">
-        Телефон: <strong>${escapeHtml(comp.company_phone || comp.phone || '')}</strong> &nbsp;&nbsp;&nbsp;&nbsp; E-mail: <strong>${escapeHtml(comp.email || '')}</strong>
+      <div style="font-size: 10pt; text-decoration: underline; margin-bottom: 8pt;">
+        <strong>${escapeHtml(comp.legal_address || '')}</strong>
       </div>
 
-      <div style="font-size:9pt;margin-bottom:8px;text-align:justify;">
+      <table class="no-border" style="margin-bottom: 8pt;">
+        <tr>
+          <td style="width: 50%; font-size: 10pt;">Телефон: <strong>${escapeHtml(comp.company_phone || comp.phone || '')}</strong></td>
+          <td style="width: 50%; font-size: 10pt;">E-mail: <strong>${escapeHtml(comp.email || '')}</strong></td>
+        </tr>
+      </table>
+
+      <div style="font-size: 9pt; text-align: justify; margin-bottom: 8pt;">
         Необходимые документы к заявлению прилагаются. Заявитель подтверждает подлинность и достоверность представленных сведений и документов.
       </div>
-      <div style="font-size:10pt;margin-bottom:15px;">
-        Реквизиты платежного документа, подтверждающего уплату государственной пошлины: <strong>${escapeHtml(paymentReqs)}</strong>
+
+      <div style="font-size: 10pt; margin-bottom: 20pt;">
+        Реквизиты платежного документа, подтверждающего уплату государственной пошлины:<br>
+        <strong>${escapeHtml(paymentReqs)}</strong>
       </div>
 
-      <table style="width:100%;margin-top:20px;">
+      <table class="no-border" style="margin-top: 15pt;">
         <tr>
-          <td style="width:60%;font-size:10pt;">
-            ${escapeHtml(comp.head_position || 'Начальник Управления')} ______________________ ${escapeHtml(comp.head_name || '')}
+          <td style="width: 65%; font-size: 10pt;">
+            ${escapeHtml(comp.head_position || 'Начальник Управления')} ____________________________ ${escapeHtml(comp.head_name || '')}<br>
+            <span style="font-size: 8pt;">(должность, Ф.И.О, подпись)</span>
           </td>
-          <td style="width:40%;text-align:right;font-size:10pt;">
-            «____» _____________ 2026 г. &nbsp;&nbsp;&nbsp; М.П.
+          <td style="width: 35%; text-align: right; font-size: 10pt; vertical-align: top;">
+            «____» _____________ 2026 г.<br>М.П.
           </td>
         </tr>
       </table>
 
-      <!-- СТРАНИЦА 2: ПРИЛОЖЕНИЕ № 1 -->
-      <div class="page-break" style="page-break-before:always;margin-top:40px;"></div>
+      <!-- РАЗРЫВ СТРАНИЦЫ ДЛЯ ПРИЛОЖЕНИЯ № 1 -->
+      <br clear=all style='mso-special-character:line-break;page-break-before:always'>
 
-      <div style="text-align:right;font-size:10pt;margin-bottom:10px;">Приложение № 1 к заявлению</div>
-      <div style="text-align:center;font-weight:bold;font-size:12pt;margin-bottom:12px;">Сведения о заявленном опасном грузе</div>
+      <div class="right" style="font-size: 10pt; margin-bottom: 6pt;">Приложение № 1 к заявлению</div>
+      <div class="center" style="font-weight: bold; font-size: 12pt; margin-bottom: 10pt;">Сведения о заявленном опасном грузе</div>
 
-      <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:15px;">
+      <table style="margin-bottom: 12pt;">
         <thead>
           <tr style="background:#f2f2f2;">
-            <th style="border:1px solid #000;padding:4px;width:5%;">№ п/п</th>
-            <th style="border:1px solid #000;padding:4px;width:12%;">Номер ООН</th>
-            <th style="border:1px solid #000;padding:4px;">Надлежащее отгрузочное наименование (ДОПОГ 3.1.2)</th>
-            <th style="border:1px solid #000;padding:4px;width:12%;">Класс (код)</th>
-            <th style="border:1px solid #000;padding:4px;width:10%;">Группа упаковки</th>
+            <th style="width: 6%; font-size: 9pt;">№ п/п</th>
+            <th style="width: 14%; font-size: 9pt;">Номер ООН</th>
+            <th style="font-size: 9pt;">Надлежащее отгрузочное наименование в соответствии с разделом 3.1.2 Приложения А к ДОПОГ</th>
+            <th style="width: 14%; font-size: 9pt;">Класс (код)</th>
+            <th style="width: 12%; font-size: 9pt;">Группа упаковки</th>
           </tr>
         </thead>
         <tbody>
@@ -1344,84 +1475,87 @@ function generateApplicationHtmlContent(payload) {
         </tbody>
       </table>
 
-      <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:20px;">
+      <div style="font-weight: bold; font-size: 10pt; margin-bottom: 4pt;">Дополнительные сведения при перевозке опасных грузов</div>
+      <table style="margin-bottom: 20pt;">
         <tr>
-          <td style="border:1px solid #000;padding:6px;width:30%;font-weight:bold;">Адреса мест погрузки</td>
-          <td style="border:1px solid #000;padding:6px;">${loadPointsText}</td>
+          <td style="width: 30%; font-size: 9pt; font-weight: bold;">Адреса мест погрузки</td>
+          <td style="font-size: 9pt;">${loadPointsText}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #000;padding:6px;font-weight:bold;">Адреса мест разгрузки</td>
-          <td style="border:1px solid #000;padding:6px;">${unloadPointsText}</td>
+          <td style="width: 30%; font-size: 9pt; font-weight: bold;">Адреса мест разгрузки</td>
+          <td style="font-size: 9pt;">${unloadPointsText}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #000;padding:6px;font-weight:bold;">Адреса мест стоянок</td>
-          <td style="border:1px solid #000;padding:6px;">Стоянки осуществлять в соответствии с Европейским соглашением (ДОПОГ)</td>
+          <td style="width: 30%; font-size: 9pt; font-weight: bold;">Адреса мест стоянок</td>
+          <td style="font-size: 9pt;">Стоянки осуществлять в соответствии с Европейским соглашением</td>
         </tr>
         <tr>
-          <td style="border:1px solid #000;padding:6px;font-weight:bold;">Адреса мест заправок</td>
-          <td style="border:1px solid #000;padding:6px;">Заправку АТС осуществлять на специально предусмотренных для этого топливозаправочных пунктах</td>
+          <td style="width: 30%; font-size: 9pt; font-weight: bold;">Адреса мест заправок топливом</td>
+          <td style="font-size: 9pt;">Заправку АТС осуществлять на специально предусмотренных для этого топливозаправочных пунктах</td>
         </tr>
       </table>
 
-      <table style="width:100%;margin-top:15px;">
+      <table class="no-border">
         <tr>
-          <td style="width:60%;font-size:10pt;">
-            ${escapeHtml(comp.head_position || 'Начальник Управления')} ______________________ ${escapeHtml(comp.head_name || '')}
+          <td style="width: 65%; font-size: 10pt;">
+            ${escapeHtml(comp.head_position || 'Начальник Управления')} ____________________________ ${escapeHtml(comp.head_name || '')}<br>
+            <span style="font-size: 8pt;">(должность, Ф.И.О, подпись)</span>
           </td>
-          <td style="width:40%;text-align:right;font-size:10pt;">М.П.</td>
+          <td style="width: 35%; text-align: right; font-size: 10pt; vertical-align: top;">М.П.</td>
         </tr>
       </table>
 
-      <!-- СТРАНИЦА 3: ПРИЛОЖЕНИЕ № 2 -->
-      <div class="page-break" style="page-break-before:always;margin-top:40px;"></div>
+      <!-- РАЗРЫВ СТРАНИЦЫ ДЛЯ ПРИЛОЖЕНИЯ № 2 -->
+      <br clear=all style='mso-special-character:line-break;page-break-before:always'>
 
-      <div style="text-align:right;font-size:10pt;margin-bottom:10px;">Приложение № 2 к заявлению</div>
-      <div style="text-align:center;font-weight:bold;font-size:12pt;margin-bottom:12px;">Маршрут перевозки опасного груза</div>
+      <div class="right" style="font-size: 10pt; margin-bottom: 6pt;">Приложение № 2 к заявлению</div>
+      <div class="center" style="font-weight: bold; font-size: 12pt; margin-bottom: 12pt;">Маршрут перевозки опасного груза</div>
 
-      <div style="font-size:11pt;line-height:1.4;text-align:justify;margin-bottom:25px;border:1px solid #000;padding:12px;">
+      <div style="font-size: 11pt; line-height: 1.35; text-align: justify; margin-bottom: 30pt; border: 1pt solid black; padding: 10pt;">
         <strong>Маршрут № ${r.route_number}:</strong> ${escapeHtml(r.route_detail || '')}
       </div>
 
-      <table style="width:100%;margin-top:20px;">
+      <table class="no-border">
         <tr>
-          <td style="width:60%;font-size:10pt;">
-            ${escapeHtml(comp.head_position || 'Начальник Управления')} ______________________ ${escapeHtml(comp.head_name || '')}
+          <td style="width: 65%; font-size: 10pt;">
+            ${escapeHtml(comp.head_position || 'Начальник Управления')} ____________________________ ${escapeHtml(comp.head_name || '')}<br>
+            <span style="font-size: 8pt;">(должность, Ф.И.О, подпись)</span>
           </td>
-          <td style="width:40%;text-align:right;font-size:10pt;">М.П.</td>
+          <td style="width: 35%; text-align: right; font-size: 10pt; vertical-align: top;">М.П.</td>
         </tr>
       </table>
     </div>
+    </body>
+    </html>
   `;
 }
 
-// 1. Скачивание Заявления
+// 1. Скачивание заявления в формате Word (.doc)
 function generateAndDownloadApplication() {
   const payload = getUgadnPayload();
   if (!payload) return;
 
-  const html = generateApplicationHtmlContent(payload);
-  const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+  const html = generateApplicationWordHtml(payload);
+  const blob = new Blob(['\ufeff' + html], { type: 'application/msword;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `Заявление_Маршрут_${payload.r.route_number}_${payload.v.plate}.doc`;
   a.click();
-  showToast('✓ Заявление успешно сформировано и скачано!', 'success');
+  showToast('✓ Заявление успешно сформировано в Word!', 'success');
 }
 
-// 2. Печать полного комплекта из 4 документов
+// 2. Печать полного комплекта (4 документа)
 function printFullDocumentPackage() {
   const payload = getUgadnPayload();
   if (!payload) return;
 
   const { v } = payload;
-  const appHtml = generateApplicationHtmlContent(payload);
+  const appHtml = generateApplicationWordHtml(payload);
 
-  // Документ 2: Свидетельство о допуске ДОПОГ
   const dopogDocHtml = v.dopog_file_path
-    ? `<div class="page-break" style="page-break-before:always;padding:15mm;"><h3 style="text-align:center;margin-bottom:15px;">2. Свидетельство о допуске ТС к перевозке опасных грузов (${escapeHtml(v.plate)})</h3><img src="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" style="max-width:100%;max-height:85vh;display:block;margin:0 auto;object-fit:contain;"><p style="text-align:center;margin-top:8px;">${escapeHtml(v.dopog_number || '')}</p></div>`
-    : `<div class="page-break" style="page-break-before:always;padding:20mm;"><h3 style="text-align:center;">2. Свидетельство о допуске ДОПОГ (${escapeHtml(v.plate)})</h3><p style="text-align:center;color:#666;">Скан-копия документа прикреплена в электронном виде: № ${escapeHtml(v.dopog_number || 'б/н')}</p></div>`;
+    ? `<div class="page-break" style="page-break-before:always;padding:15mm;"><h3 style="text-align:center;margin-bottom:15px;">2. Свидетельство о допуске ТС (${escapeHtml(v.plate)})</h3><img src="/api/files/vehicles/${encodeURIComponent(v.dopog_file_path)}" style="max-width:100%;max-height:85vh;display:block;margin:0 auto;object-fit:contain;"><p style="text-align:center;margin-top:8px;">${escapeHtml(v.dopog_number || '')}</p></div>`
+    : `<div class="page-break" style="page-break-before:always;padding:20mm;"><h3 style="text-align:center;">2. Свидетельство о допуске ДОПОГ (${escapeHtml(v.plate)})</h3><p style="text-align:center;color:#666;">Прикреплено: № ${escapeHtml(v.dopog_number || 'б/н')}</p></div>`;
 
-  // Документ 3: Платежное поручение
   const paymentFileInput = document.getElementById('ugadnPaymentFile');
   let paymentDocHtml = '';
   if (paymentFileInput.files.length > 0) {
@@ -1431,7 +1565,6 @@ function printFullDocumentPackage() {
     paymentDocHtml = `<div class="page-break" style="page-break-before:always;padding:20mm;"><h3 style="text-align:center;">3. Платежное поручение госпошлины</h3><p style="text-align:center;">Реквизиты: ${escapeHtml(payload.paymentReqs)}</p></div>`;
   }
 
-  // Документ 4: Свидетельство о регистрации (СТС)
   const stsDocHtml = v.sts_file_path
     ? `<div class="page-break" style="page-break-before:always;padding:15mm;"><h3 style="text-align:center;margin-bottom:15px;">4. Свидетельство о регистрации ТС (СТС ${escapeHtml(v.plate)})</h3><img src="/api/files/vehicles/${encodeURIComponent(v.sts_file_path)}" style="max-width:100%;max-height:85vh;display:block;margin:0 auto;object-fit:contain;"><p style="text-align:center;margin-top:8px;">СТС: ${escapeHtml(v.sts_number || '')}</p></div>`
     : `<div class="page-break" style="page-break-before:always;padding:20mm;"><h3 style="text-align:center;">4. Свидетельство о регистрации ТС (СТС)</h3><p style="text-align:center;color:#666;">СТС: ${escapeHtml(v.sts_number || 'б/н')}</p></div>`;
@@ -1523,7 +1656,7 @@ function createRouteFromCalc() {
   }
 }
 
-// --- ФИЛЬТРЫ ДАШБОРДА ---
+// --- ФИЛЬТРЫ И ВКЛАДКИ ---
 function setRouteFilter(key) {
   activeRouteFilter = (activeRouteFilter === key && key !== 'all') ? 'all' : key;
   document.querySelectorAll('.stat-card[data-route-filter]').forEach(c => c.classList.toggle('active-filter', c.getAttribute('data-route-filter') === activeRouteFilter));
@@ -1546,7 +1679,6 @@ function setVehicleFilter(key) {
 function switchTab(id) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === id));
   document.querySelectorAll('.tab-content').forEach(c => c.style.display = c.id === id ? 'block' : 'none');
-  if (id === 'tab-admin') loadAdminData();
 }
 
 function showToast(msg, type = 'info') {
@@ -1575,21 +1707,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadUserProfile();
   await loadServerData();
 
-  // Клик вне карточки (оверлей) с проверкой несохраненных данных (Пункт 3)
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        closeModal(overlay.id);
-      }
+      if (e.target === overlay) closeModal(overlay.id);
     });
   });
 
-  // Маски телефона (Пункт 7)
+  // Пункт 3: Маска госномера ТС и номера СТС
+  document.getElementById('vehiclePlate').addEventListener('input', applyPlateMask);
+  document.getElementById('vehicleStsNumber').addEventListener('input', applyStsMask);
+
+  // Пункт 7: Маски телефонов
   document.querySelectorAll('.phone-mask').forEach(input => {
     input.addEventListener('input', applyPhoneMask);
   });
 
-  // Маски дат 1С (Пункт 16)
+  // Пункт 16: Маски дат
   document.querySelectorAll('.date-1c-mask').forEach(input => {
     input.addEventListener('input', applyDateInputMask);
     input.addEventListener('blur', () => {
@@ -1605,7 +1738,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Авторасчет даты окончания СР (+1 год - 1 день)
+  // Авторасчет даты окончания СР
   document.getElementById('permitStartDate').addEventListener('change', (e) => {
     const end = document.getElementById('permitEndDate');
     if (e.target.value && (!end.value || document.getElementById('permitEditId').value === '')) {
@@ -1613,22 +1746,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Маска номера СР ХХ ХХХХХХ/э
+  // Маска номера СР
   document.getElementById('permitNumber').addEventListener('input', (e) => {
     applyPermitNumberMask(e.target);
   });
 
-  // Маска сертификата консультанта ХХ ХХХХХ
+  // Пункт 2: Маска сертификата консультанта
   document.getElementById('profCertNum').addEventListener('input', (e) => {
     applyConsultantCertMask(e.target);
   });
 
-  // Поиск
+  // Пункт 4: Поиск по городам
   document.getElementById('routeSearchInput')?.addEventListener('input', renderRoutes);
   document.getElementById('permitSearchInput')?.addEventListener('input', renderPermits);
   document.getElementById('vehicleSearchInput')?.addEventListener('input', renderVehicles);
 
-  // Сабмит Маршрута
+  // Сохранение Маршрута
   document.getElementById('routeForm').onsubmit = async (e) => {
     e.preventDefault();
     if (currentRouteUnTags.length === 0) return showToast('Укажите хотя бы один номер ООН', 'warning');
@@ -1656,7 +1789,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Сабмит Спецразрешения (СР)
+  // Сохранение Спецразрешения
   document.getElementById('permitForm').onsubmit = async (e) => {
     e.preventDefault();
     const editId = document.getElementById('permitEditId').value;
@@ -1687,19 +1820,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (res && res.ok) {
       showToast(editId ? 'СР обновлено' : 'Специальное разрешение выпущено!', 'success');
       closeModal('permitModal', true);
-
-      const s = calculateStatus(endDateIso);
-      if (s.status === 'critical' || s.status === 'expired') {
-        triggerInstantAlert('Внимание: Срок СР', `Выпущено СР ${document.getElementById('permitNumber').value}: ${s.label}!`, 'error');
-      } else if (s.status === 'warning') {
-        triggerInstantAlert('Внимание: Срок СР', `Выпущено СР со сроком окончания менее 30 дней!`, 'warning');
-      }
-
       await loadServerData();
     }
   };
 
-  // Сабмит Автомобиля
+  // Сохранение Автомобиля
   document.getElementById('vehicleForm').onsubmit = async (e) => {
     e.preventDefault();
     const editId = document.getElementById('vehicleEditId').value;
@@ -1726,17 +1851,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (res && res.ok) {
       showToast('Автомобиль сохранен в реестр', 'success');
       closeModal('vehicleModal', true);
-
-      const s = calculateStatus(expiryIso);
-      if (s.status === 'critical' || s.status === 'expired') {
-        triggerInstantAlert('Внимание: Допуск авто ДОПОГ', `У автомобиля ${document.getElementById('vehiclePlate').value} допуск ДОПОГ: ${s.label}!`, 'error');
-      }
-
       await loadServerData();
     }
   };
 
-  // Сабмит Профиля организации
+  // Сохранение Профиля компании
   document.getElementById('profileForm').onsubmit = async (e) => {
     e.preventDefault();
     const startIso = date1CToIso(document.getElementById('profCertStart').value);
@@ -1751,6 +1870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       headPosition: document.getElementById('profHeadPosition').value,
       headName: document.getElementById('profHeadName').value,
       fullName: document.getElementById('profFullName').value,
+      consultantPosition: document.getElementById('profConsultantPosition').value,
       phone: document.getElementById('profPhone').value,
       consultantCertNumber: document.getElementById('profCertNum').value,
       consultantCertStart: startIso,

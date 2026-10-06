@@ -47,7 +47,7 @@ const upload = multer({ storage });
 const db = new Database(path.join(dataDir, 'dopog.db'));
 db.pragma('journal_mode = WAL');
 
-// Инициализация структуры таблиц
+// Инициализация базовых таблиц
 db.exec(`
   CREATE TABLE IF NOT EXISTS companies (
     id TEXT PRIMARY KEY,
@@ -68,6 +68,7 @@ db.exec(`
     password_hash TEXT NOT NULL,
     full_name TEXT,
     phone TEXT,
+    consultant_position TEXT,
     consultant_cert_number TEXT,
     consultant_cert_start TEXT,
     consultant_cert_end TEXT,
@@ -139,71 +140,18 @@ db.exec(`
   );
 `);
 
-// Демо-данные для первоначального старта
-const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-if (userCount === 0) {
-  const companyId = 'comp_demo_1';
-  const userId = 'user_admin_1';
-  const hashedPassword = bcrypt.hashSync('admin123', 10);
+// АВТОМАТИЧЕСКИЕ МИГРАЦИИ (СОХРАНЯЮТ ДАННЫЕ В СУЩЕСТВУЮЩИХ БАЗАХ)
+try { db.exec("ALTER TABLE users ADD COLUMN consultant_position TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN phone TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE companies ADD COLUMN ogrn TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE companies ADD COLUMN legal_address TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE companies ADD COLUMN head_position TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE companies ADD COLUMN head_name TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE vehicles ADD COLUMN vin TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE vehicles ADD COLUMN vehicle_type TEXT;"); } catch (e) {}
+try { db.exec("ALTER TABLE routes ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;"); } catch (e) {}
 
-  db.prepare(`
-    INSERT INTO companies (id, name, inn, ogrn, legal_address, phone, head_position, head_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    companyId,
-    'Филиал Федерального государственного унитарного предприятия «Главный центр специальной связи» – Управление специальной связи по Омской области, Федеральное государственное унитарное предприятие',
-    '7717043113', '1027700041830',
-    '644042, г. Омск, ул. Иртышская набережная, д. 17',
-    '+7 905 097-69-66',
-    'Начальник Управления', 'Абрамов Евгений Борисович'
-  );
-
-  db.prepare(`
-    INSERT INTO users (id, company_id, email, password_hash, full_name, phone, consultant_cert_number, consultant_cert_start, consultant_cert_end, role)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    userId, companyId, 'admin@dopog.ru', hashedPassword,
-    'Павленко Денис Сергеевич', '+7 905 097-69-66',
-    '54 00853', '2024-06-10', '2029-06-09', 'admin'
-  );
-
-  const today = new Date();
-  const addDays = (d) => {
-    const res = new Date(today);
-    res.setDate(res.getDate() + d);
-    return res.toISOString().split('T')[0];
-  };
-
-  db.prepare(`
-    INSERT INTO vehicles (id, company_id, plate, brand, vin, vehicle_type, sts_number, dopog_number, dopog_expiry_date)
-    VALUES
-    ('v_1', ?, 'У 511 НС 55', 'AF 475600 V', 'X9H475600K8V00007', 'Грузовой фургон', '55 12 345678', 'ДОПОГ № 55-0012', ?),
-    ('v_2', ?, 'А 741 ТР 77', 'Scania G400', 'X9H475600K8V00111', 'Грузовой фургон', '77 34 987654', 'ДОПОГ № 77-0941', ?)
-  `).run(companyId, addDays(210), companyId, addDays(18));
-
-  const demoUNs = ['0005', '0007', '0029', '0030', '0065', '0106', '0161', '0167', '0168', '0180', '0186', '0242', '0275', '0293', '0295', '0322', '0332', '0360', '0366', '0377', '0469'];
-  const demoLoads = [
-    'АО «МПЗ», 602205, Владимирская обл., г. Муром, ул. 30 лет Победы, д. 1-А',
-    'АО «Омсктрансмаш», г. Омск, ул. Тупиковая, 2',
-    'АО «Омсктрансмаш», г. Омск, ул. Красный пер., 2'
-  ];
-
-  db.prepare(`
-    INSERT INTO routes (id, company_id, route_number, name, un_codes, points_load, points_unload, route_detail, is_archived)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    'r_1', companyId, 55, 'Муром — Омск (Класс 1)',
-    JSON.stringify(demoUNs), JSON.stringify(demoLoads), JSON.stringify(demoLoads),
-    'гор. Муром: ул. 30 лет Победы (АО «Муромский приборостроительный завод», ул. 30 лет Победы, 1-А), ул. Ленинградская; от гр.г. Муром – а.д. Касимов – Муром – Н.Новгород (п. Вербовский); А.д. Касимов – Муром – Н.Новгород; А.д. Обход г. Мурома с мостовым переходом через р. Оку – до гр. С Нижегородской обл.; от гр. Владимирской обл. – а.д. Мостовой переход через р. Оку с обходом г. Мурома; А.д. Ряжск – Касимов – Муром – Н.Новгород; А.д. Обход г. Н.Новгороа: с км 30+540 по км 45+225 (3 очередь); А.д. Подъезд к южной промзоне г. Кстово; А.д. Кстово – Д.Константиново – а.д. Н.Новгород – Саратов; А.д. Обход г. Кстово – до 443 км А.д. М-7; А.д. М-7 «Волга» (обход г. Н.Новгород, обход г. Чебоксары, обход г. Казань); Мостовой переход через р. Кама в г. Набережные Челны по сооружениям Нижнекамской ГЭС на а.д. М-7 «Волга»; А.д. М-7 «Волга» (обход г. Набережные Челны, обход г. Уфа); У.д. М-5 «Урал» (обход г. Уфа); А.д. Обход г. Челябинска; А.д. Р-254 «Иртыш» Челябинск – Курган – Омск – Новосибирск; А.д. Р-254 «Иртыш» Подъезд к г. Ишим; А.д. Обход г. Ишим; А.д. Р-402 Тюмень – Ялуторовск – Ишим – Омск; А.д. Окружная дорога г. Омска, участок Федоровка – Александровка; А.д. Р-254 «Иртыш» Южный обход гор. Омска; гор. Омск: Черлакский тракт, ул. Пугачева, ул. 1-я Комсомольская, ул. Тупиковая (АО «Омсктрансмаш», ул. Тупиковая, 2), ул. Новосортировочная, ул. Гуртьева, ул. Д.Бедного, ул. Невского, ул. Блусевич, ул. Вокзальная, Зеленый пер., ул. Карбышева, ул. Красный пер. (АО «Омсктрансмаш», ул. Красный пер., 2). И обратно.',
-    0
-  );
-
-  db.prepare(`
-    INSERT INTO permits (id, company_id, route_id, vehicle_id, number, start_date, end_date, files_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run('p_1', companyId, 'r_1', 'v_1', '55 004521/э', addDays(-30), addDays(334), '[]');
-}
-
+// Аутентификация
 function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -247,6 +195,7 @@ app.post('/api/auth/login', (req, res) => {
       email: user.email,
       fullName: user.full_name,
       phone: user.phone,
+      consultantPosition: user.consultant_position,
       consultantCertNumber: user.consultant_cert_number,
       consultantCertStart: user.consultant_cert_start,
       consultantCertEnd: user.consultant_cert_end,
@@ -263,7 +212,7 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.post('/api/auth/register', (req, res) => {
-  const { companyName, inn, ogrn, legalAddress, companyPhone, headPosition, headName, email, password, fullName, phone, consultantCertNumber, consultantCertStart, consultantCertEnd } = req.body;
+  const { companyName, inn, ogrn, legalAddress, companyPhone, headPosition, headName, email, password, fullName, phone, consultantPosition, consultantCertNumber, consultantCertStart, consultantCertEnd } = req.body;
   if (!companyName || !email || !password) return res.status(400).json({ error: 'Заполните обязательные поля' });
 
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.trim().toLowerCase());
@@ -284,12 +233,13 @@ app.post('/api/auth/register', (req, res) => {
     );
 
     db.prepare(`
-      INSERT INTO users (id, company_id, email, password_hash, full_name, phone, consultant_cert_number, consultant_cert_start, consultant_cert_end, role)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, company_id, email, password_hash, full_name, phone, consultant_position, consultant_cert_number, consultant_cert_start, consultant_cert_end, role)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin')
     `).run(
       userId, companyId, email.trim().toLowerCase(), passwordHash,
       fullName || 'Консультант ДОПОГ', phone ? phone.trim() : '',
-      consultantCertNumber || null, consultantCertStart || null, consultantCertEnd || null, 'admin'
+      consultantPosition || null, consultantCertNumber || null,
+      consultantCertStart || null, consultantCertEnd || null
     );
   });
   tx();
@@ -300,8 +250,9 @@ app.post('/api/auth/register', (req, res) => {
 
 app.get('/api/auth/me', authMiddleware, (req, res) => {
   const user = db.prepare(`
-    SELECT u.id, u.email, u.full_name, u.phone, u.consultant_cert_number, u.consultant_cert_start, u.consultant_cert_end,
-           u.role, u.company_id, c.name as company_name, c.inn as company_inn, c.ogrn as company_ogrn,
+    SELECT u.id, u.email, u.full_name, u.phone, u.consultant_position, u.consultant_cert_number,
+           u.consultant_cert_start, u.consultant_cert_end, u.role, u.company_id,
+           c.name as company_name, c.inn as company_inn, c.ogrn as company_ogrn,
            c.legal_address, c.phone as company_phone, c.head_position, c.head_name
     FROM users u 
     JOIN companies c ON u.company_id = c.id 
@@ -312,53 +263,34 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 });
 
 app.put('/api/auth/profile', authMiddleware, (req, res) => {
-  const { fullName, phone, companyName, companyInn, companyOgrn, legalAddress, companyPhone, headPosition, headName, consultantCertNumber, consultantCertStart, consultantCertEnd } = req.body;
+  const { fullName, phone, consultantPosition, companyName, companyInn, companyOgrn, legalAddress, companyPhone, headPosition, headName, consultantCertNumber, consultantCertStart, consultantCertEnd } = req.body;
   const tx = db.transaction(() => {
     db.prepare(`
       UPDATE users
-      SET full_name = ?, phone = ?, consultant_cert_number = ?, consultant_cert_start = ?, consultant_cert_end = ?
+      SET full_name = ?, phone = ?, consultant_position = ?, consultant_cert_number = ?, consultant_cert_start = ?, consultant_cert_end = ?
       WHERE id = ?
-    `).run(fullName.trim(), phone || '', consultantCertNumber ? consultantCertNumber.trim() : null, consultantCertStart || null, consultantCertEnd || null, req.user.userId);
+    `).run(
+      fullName.trim(), phone || '', consultantPosition || '',
+      consultantCertNumber ? consultantCertNumber.trim() : null,
+      consultantCertStart || null, consultantCertEnd || null, req.user.userId
+    );
 
     if (companyName) {
       db.prepare(`
         UPDATE companies
         SET name = ?, inn = ?, ogrn = ?, legal_address = ?, phone = ?, head_position = ?, head_name = ?
         WHERE id = ?
-      `).run(companyName.trim(), companyInn || '', companyOgrn || '', legalAddress || '', companyPhone || '', headPosition || '', headName || '', req.user.companyId);
+      `).run(
+        companyName.trim(), companyInn || '', companyOgrn || '', legalAddress || '',
+        companyPhone || '', headPosition || '', headName || '', req.user.companyId
+      );
     }
   });
   tx();
   res.json({ success: true });
 });
 
-// --- АДМИН-ПАНЕЛЬ (SUPERADMIN) ---
-
-app.get('/api/admin/overview', authMiddleware, (req, res) => {
-  const totalCompanies = db.prepare('SELECT COUNT(*) as count FROM companies').get().count;
-  const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-  const totalVehicles = db.prepare('SELECT COUNT(*) as count FROM vehicles').get().count;
-  const totalRoutes = db.prepare('SELECT COUNT(*) as count FROM routes WHERE is_archived = 0').get().count;
-  const totalPermits = db.prepare('SELECT COUNT(*) as count FROM permits').get().count;
-
-  const companiesList = db.prepare(`
-    SELECT c.*, u.email as admin_email, u.full_name as contact_person, u.phone as contact_phone,
-           (SELECT COUNT(*) FROM vehicles WHERE company_id = c.id) as vehicle_count,
-           (SELECT COUNT(*) FROM routes WHERE company_id = c.id AND is_archived = 0) as route_count,
-           (SELECT COUNT(*) FROM permits WHERE company_id = c.id) as permit_count
-    FROM companies c
-    LEFT JOIN users u ON u.company_id = c.id
-    GROUP BY c.id
-    ORDER BY c.created_at DESC
-  `).all();
-
-  res.json({
-    stats: { totalCompanies, totalUsers, totalVehicles, totalRoutes, totalPermits },
-    companies: companiesList
-  });
-});
-
-// --- РЕЕСТР МАРШРУТОВ (С АРХИВАЦИЕЙ) ---
+// --- МАРШРУТЫ ---
 
 app.get('/api/routes', authMiddleware, (req, res) => {
   const includeArchived = req.query.archived === '1';
@@ -426,16 +358,15 @@ app.put('/api/routes/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-// Отправка в архив / восстановление из архива
 app.patch('/api/routes/:id/archive', authMiddleware, (req, res) => {
   const { id } = req.params;
-  const { archive } = req.body; // true: в архив, false: восстановить
+  const { archive } = req.body;
   db.prepare('UPDATE routes SET is_archived = ? WHERE id = ? AND company_id = ?')
     .run(archive ? 1 : 0, id, req.user.companyId);
   res.json({ success: true });
 });
 
-// --- РЕЕСТР СПЕЦРАЗРЕШЕНИЙ (МНОЖЕСТВЕННЫЕ СКАНЫ) ---
+// --- СПЕЦРАЗРЕШЕНИЯ ---
 
 app.get('/api/permits', authMiddleware, (req, res) => {
   const permits = db.prepare(`
@@ -484,10 +415,7 @@ app.put('/api/permits/:id', authMiddleware, upload.array('permitFiles', 20), (re
   if (!existing) return res.status(404).json({ error: 'СР не найдено' });
 
   let files = [];
-  try {
-    files = JSON.parse(existingFilesJson || existing.files_json || '[]');
-  } catch (e) {}
-
+  try { files = JSON.parse(existingFilesJson || existing.files_json || '[]'); } catch (e) {}
   if (req.files && req.files.length > 0) {
     req.files.forEach(f => files.push({ name: f.originalname, path: f.filename }));
   }
@@ -507,7 +435,7 @@ app.delete('/api/permits/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-// --- АВТОПАРК (VIN + ТИП ТС) ---
+// --- АВТОПАРК ---
 
 app.get('/api/vehicles', authMiddleware, (req, res) => {
   const vehicles = db.prepare('SELECT * FROM vehicles WHERE company_id = ? ORDER BY created_at DESC').all(req.user.companyId);
@@ -584,12 +512,37 @@ app.delete('/api/vehicles/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-// --- ПОДГОТОВКА ДОКУМЕНТОВ В УГАДН ---
+// --- ЗАЯВЛЕНИЯ В УГАДН (ХРАНЕНИЕ НЕСКОЛЬКИХ ЗАЯВЛЕНИЙ) ---
+
+app.get('/api/ugadn/route/:routeId', authMiddleware, (req, res) => {
+  const { routeId } = req.params;
+  const list = db.prepare(`
+    SELECT u.*, v.plate, v.brand, v.vin, v.vehicle_type, v.sts_number, v.sts_file_path, v.dopog_number, v.dopog_file_path
+    FROM ugadn_applications u
+    JOIN vehicles v ON u.vehicle_id = v.id
+    WHERE u.company_id = ? AND u.route_id = ?
+    ORDER BY u.created_at DESC
+  `).all(req.user.companyId, routeId);
+
+  res.json({ applications: list });
+});
 
 app.post('/api/ugadn/save', authMiddleware, upload.single('paymentFile'), (req, res) => {
-  const { routeId, vehicleId, ugadnTarget, paymentRequisites, periodStart, periodEnd } = req.body;
-  const id = 'ugadn_' + Date.now();
+  const { id, routeId, vehicleId, ugadnTarget, paymentRequisites, periodStart, periodEnd } = req.body;
+  if (!routeId || !vehicleId) return res.status(400).json({ error: 'Укажите маршрут и автомобиль' });
+
+  let appId = id;
   let paymentFileName = null, paymentFilePath = null;
+
+  if (appId) {
+    const existing = db.prepare('SELECT * FROM ugadn_applications WHERE id = ? AND company_id = ?').get(appId, req.user.companyId);
+    if (existing) {
+      paymentFileName = existing.payment_file_name;
+      paymentFilePath = existing.payment_file_path;
+    }
+  } else {
+    appId = 'ugadn_' + Date.now();
+  }
 
   if (req.file) {
     paymentFileName = req.file.originalname;
@@ -597,16 +550,22 @@ app.post('/api/ugadn/save', authMiddleware, upload.single('paymentFile'), (req, 
   }
 
   db.prepare(`
-    INSERT INTO ugadn_applications (id, company_id, route_id, vehicle_id, ugadn_target, payment_requisites, payment_file_name, payment_file_path, period_start, period_end)
+    INSERT OR REPLACE INTO ugadn_applications (id, company_id, route_id, vehicle_id, ugadn_target, payment_requisites, payment_file_name, payment_file_path, period_start, period_end)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, req.user.companyId, routeId, vehicleId,
+    appId, req.user.companyId, routeId, vehicleId,
     ugadnTarget || 'в МТУ Ространснадзора по СФО',
     paymentRequisites || '', paymentFileName, paymentFilePath,
     periodStart || '', periodEnd || ''
   );
 
-  res.json({ success: true, id, paymentFileName, paymentFilePath });
+  res.json({ success: true, id: appId });
+});
+
+app.delete('/api/ugadn/:id', authMiddleware, (req, res) => {
+  const { id } = req.params;
+  db.prepare('DELETE FROM ugadn_applications WHERE id = ? AND company_id = ?').run(id, req.user.companyId);
+  res.json({ success: true });
 });
 
 // Скачивание файлов
@@ -622,5 +581,5 @@ app.get('/api/files/:folder/:filename', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`DOPOG Online SaaS v2.1 running on port ${PORT}`);
+  console.log(`DOPOG Online SaaS running on port ${PORT}`);
 });

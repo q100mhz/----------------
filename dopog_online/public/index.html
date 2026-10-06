@@ -13,7 +13,7 @@
     <div class="brand-wrapper">
       <div class="brand-icon">⚠</div>
       <div class="brand-text">
-        <h1>ДОПОГ Экспресс <span class="brand-badge" style="background:#10b981;color:#fff;">SaaS v2.1</span></h1>
+        <h1>ДОПОГ Экспресс <span class="brand-badge" style="background:#10b981;color:#fff;">SaaS</span></h1>
         <div class="brand-sub">Реестр маршрутов, специальных разрешений и допусков ДОПОГ</div>
       </div>
     </div>
@@ -36,7 +36,7 @@
     </div>
   </header>
 
-  <!-- Навигация -->
+  <!-- Навигация (Админка удалена) -->
   <nav class="nav-bar">
     <div class="nav-tabs">
       <button class="nav-tab active" data-tab="tab-routes" onclick="switchTab('tab-routes')">
@@ -50,17 +50,13 @@
         <span class="tab-badge" id="permitsCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-vehicles" onclick="switchTab('tab-vehicles')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
         Автопарк и Допуски ДОПОГ
         <span class="tab-badge" id="vehiclesCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-calc" onclick="switchTab('tab-calc')">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         Проверка груза по ООН (ОГПО)
-      </button>
-      <button class="nav-tab" data-tab="tab-admin" onclick="switchTab('tab-admin')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        Админка
       </button>
     </div>
   </nav>
@@ -321,53 +317,6 @@
       </div>
     </section>
 
-    <!-- ВКЛАДКА 5: АДМИНКА -->
-    <section id="tab-admin" class="tab-content" style="display: none;">
-      <div class="stats-grid">
-        <div class="stat-card total">
-          <div class="stat-title">Компаний-клиентов</div>
-          <div class="stat-value" id="adminTotalCompanies">0</div>
-          <div class="stat-desc">Зарегистрировано в системе</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-title">Пользователей</div>
-          <div class="stat-value" id="adminTotalUsers">0</div>
-          <div class="stat-desc">Диспетчеры и консультанты</div>
-        </div>
-        <div class="stat-card yellow">
-          <div class="stat-title">Автомобилей в базах</div>
-          <div class="stat-value" id="adminTotalVehicles">0</div>
-          <div class="stat-desc">По всем автопаркам</div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-title">Активных маршрутов</div>
-          <div class="stat-value" id="adminTotalRoutes">0</div>
-          <div class="stat-desc">По всем клиентам</div>
-        </div>
-      </div>
-
-      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">Реестр компаний-клиентов</h3>
-      <div class="table-card">
-        <div class="table-wrapper">
-          <table id="adminCompaniesTable">
-            <thead>
-              <tr>
-                <th>Название организации</th>
-                <th>ИНН</th>
-                <th>ОГРН</th>
-                <th>Руководитель</th>
-                <th>Контактное лицо</th>
-                <th>Телефон</th>
-                <th>ТС / Маршруты / СР</th>
-                <th>Дата регистрации</th>
-              </tr>
-            </thead>
-            <tbody id="adminCompaniesTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
   </main>
 
   <!-- МОДАЛЬНОЕ ОКНО: МАРШРУТ (ДОБАВИТЬ/РЕДАКТИРОВАТЬ) -->
@@ -467,7 +416,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ВЫПУСК СПЕЦРАЗРЕШЕНИЯ (МНОЖЕСТВЕННЫЙ СКАН) -->
+  <!-- МОДАЛЬНОЕ ОКНО: ВЫПУСК СПЕЦРАЗРЕШЕНИЯ -->
   <div class="modal-overlay" id="permitModal">
     <div class="modal-card" style="max-width: 650px;">
       <div class="modal-header">
@@ -538,8 +487,8 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Госномер ТС *</label>
-              <input type="text" id="vehiclePlate" class="form-input" placeholder="У 511 НС 55" required>
+              <label class="form-label">Госномер ТС (Х ННН ХХ НН) *</label>
+              <input type="text" id="vehiclePlate" class="form-input" placeholder="У 511 НС 55" required maxlength="12">
             </div>
             <div class="form-group">
               <label class="form-label">Марка / Модель *</label>
@@ -560,8 +509,8 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Номер СТС</label>
-              <input type="text" id="vehicleStsNumber" class="form-input" placeholder="55 12 345678">
+              <label class="form-label">Номер СТС (НН НН НННННН)</label>
+              <input type="text" id="vehicleStsNumber" class="form-input" placeholder="55 12 345678" maxlength="12">
             </div>
             <div class="form-group">
               <label class="form-label">Скан СТС</label>
@@ -667,14 +616,19 @@
               <input type="text" id="profFullName" class="form-input" placeholder="Павленко Денис Сергеевич" required>
             </div>
             <div class="form-group">
+              <label class="form-label">Должность консультанта *</label>
+              <input type="text" id="profConsultantPosition" class="form-input" placeholder="Консультант по безопасности" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
               <label class="form-label">Телефон консультанта</label>
               <input type="text" id="profPhone" class="form-input phone-mask" placeholder="+7 999 444-22-33">
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Серия и номер свидетельства консультанта</label>
-            <input type="text" id="profCertNum" class="form-input" placeholder="54 00853" maxlength="8">
-            <span class="form-hint">Формат заполнения: ХХ ХХХХХ (например: 54 00853)</span>
+            <div class="form-group">
+              <label class="form-label">Свидетельство консультанта (ХХ ХХХХХ)</label>
+              <input type="text" id="profCertNum" class="form-input" placeholder="54 00853" maxlength="8">
+            </div>
           </div>
 
           <div class="form-row">
@@ -702,15 +656,16 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ПОДГОТОВКА ДОКУМЕНТОВ В УГАДН (ПУНКТ 20) -->
+  <!-- МОДАЛЬНОЕ ОКНО: ПОДГОТОВКА ДОКУМЕНТОВ В УГАДН -->
   <div class="modal-overlay" id="ugadnModal">
     <div class="modal-card" style="max-width: 680px;">
       <div class="modal-header">
-        <h3 class="modal-title">Подготовка документов в УГАДН (Ространснадзор)</h3>
+        <h3 class="modal-title" id="ugadnModalTitle">Подготовка документов в УГАДН (Ространснадзор)</h3>
         <button class="modal-close-btn" onclick="closeModal('ugadnModal')">&times;</button>
       </div>
       <form id="ugadnForm">
         <div class="modal-body">
+          <input type="hidden" id="ugadnEditId">
           <input type="hidden" id="ugadnRouteId">
 
           <div class="form-group">
@@ -730,21 +685,22 @@
               <input type="text" id="ugadnPaymentReqs" class="form-input" placeholder="№ 512 от 05.10.2026" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Файл платежного поручения (1 шт)</label>
+              <label class="form-label">Файл платежного поручения (скан 1 шт)</label>
               <input type="file" id="ugadnPaymentFile" class="form-input" accept=".pdf,image/*">
+              <div id="ugadnPaymentCurrentFile"></div>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Предполагаемый срок перевозки с (необязательно)</label>
+              <label class="form-label">Предполагаемый срок перевозки с</label>
               <div class="date-input-group">
                 <input type="text" id="ugadnPeriodStart" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" maxlength="10">
                 <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'ugadnPeriodStart')">
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">по (необязательно)</label>
+              <label class="form-label">по</label>
               <div class="date-input-group">
                 <input type="text" id="ugadnPeriodEnd" class="form-input date-1c-mask" placeholder="ДД.ММ.ГГГГ" maxlength="10">
                 <input type="date" class="native-datepicker" onchange="syncDateFromNative(this, 'ugadnPeriodEnd')">
@@ -753,11 +709,12 @@
           </div>
         </div>
 
-        <div class="modal-footer" style="display: flex; justify-content: space-between;">
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
           <button type="button" class="btn btn-secondary" onclick="closeModal('ugadnModal')">Отмена</button>
           <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-primary" onclick="generateAndDownloadApplication()">📥 Скачать Заявление</button>
-            <button type="button" class="btn btn-primary" style="background:#059669;" onclick="printFullDocumentPackage()">🖨️ Печать 4 документов</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveUgadnApp">💾 Сохранить заявление</button>
+            <button type="button" class="btn btn-secondary" onclick="generateAndDownloadApplication()">📥 Скачать Word</button>
+            <button type="button" class="btn btn-primary" style="background:#059669;" onclick="printFullDocumentPackage()">🖨️ Печать 4 док.</button>
           </div>
         </div>
       </form>
